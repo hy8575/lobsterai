@@ -1,0 +1,13 @@
+{
+  "portfolio_annual_return": 0.35910290701422376,
+  "benchmark_annual_return": 0.16775057850944375,
+  "excess_annual_return": 0.19135232850478,
+  "tracking_error": 0.03197721573375583,
+  "information_ratio": 5.9840209384704,
+  "sharpe_ratio": 10.383977252671713,
+  "max_drawdown": 0.0,
+  "win_rate": 0.8823529411764706,
+  "calmar_ratio": 0,
+  "portfolio_final_value": 21.5042061101029,
+  "benchmark_final_value": 4.715208605485816
+}
