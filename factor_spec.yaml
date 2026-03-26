@@ -1,0 +1,1077 @@
+# factor_spec.yaml
+# 来源研报: 中金公司《量化多因子系列（1）：QQC综合质量因子与指数增强应用》
+# 发布日期: 2021-01-14
+# 作者: 刘均伟 (S0080520120002), 王汉锋 (S0080513080002)
+# 生成说明: 从研报中提取所有可量化因子定义，字段严格匹配 a_share.db 数据字典
+
+meta:
+  report_title: "量化多因子系列（1）：QQC综合质量因子与指数增强应用"
+  publisher: CICC
+  publish_date: "2021-01-14"
+  authors:
+    - name: 刘均伟
+      sac_id: S0080520120002
+    - name: 王汉锋
+      sac_id: S0080513080002
+
+data:
+  database: a_share.db
+  align_by: ann_date
+  backtest:
+    in_sample: ["2009-01-01", "2018-12-31"]
+    out_of_sample: ["2019-01-01", "2020-12-31"]
+  frequency: monthly
+  selection_criteria:
+    ic_threshold: 0.02
+    ir_threshold: 0.3
+    tstat_threshold: 3.0
+
+factors:
+
+  # ================================================================
+  # 一、盈利能力 (Profitability) 子因子
+  # 选入复合因子: CFOA, ROE, ROIC
+  # ================================================================
+
+  cicc_gpm_2021:
+    factor_id: cicc_gpm_2021
+    name_cn: 毛利率
+    name_en: Gross Profit Margin
+    category: profitability
+    formula: "(revenue - oper_cost) / revenue"
+    source: [fin_income]
+    fields: [revenue, oper_cost]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0088, ic_ir: 0.12 }
+
+  cicc_npm_2021:
+    factor_id: cicc_npm_2021
+    name_cn: 净利率
+    name_en: Net Profit Margin
+    category: profitability
+    formula: "netprofit_margin"
+    source: [fin_indicator]
+    fields: [netprofit_margin]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0091, ic_ir: 0.11 }
+
+  cicc_roe_2021:
+    factor_id: cicc_roe_2021
+    name_cn: 净资产收益率
+    name_en: Return on Equity
+    category: profitability
+    formula: "roe"
+    source: [fin_indicator]
+    fields: [roe]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0192, ic_ir: 0.23 }
+
+  cicc_roa_2021:
+    factor_id: cicc_roa_2021
+    name_cn: 总资产收益率
+    name_en: Return on Assets
+    category: profitability
+    formula: "roa"
+    source: [fin_indicator]
+    fields: [roa]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0153, ic_ir: 0.16 }
+
+  cicc_roic_2021:
+    factor_id: cicc_roic_2021
+    name_cn: 投入资本收益率
+    name_en: Return on Invested Capital
+    category: profitability
+    formula: "roic"
+    source: [fin_indicator]
+    fields: [roic]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0192, ic_ir: 0.24 }
+
+  cicc_oitoebt_2021:
+    factor_id: cicc_oitoebt_2021
+    name_cn: 经营收益占比
+    name_en: Operating Income to EBT
+    category: profitability
+    formula: "opincome_of_ebt"
+    source: [fin_indicator]
+    fields: [opincome_of_ebt]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0071, ic_ir: 0.13 }
+
+  cicc_opm_2021:
+    factor_id: cicc_opm_2021
+    name_cn: 营业利润率
+    name_en: Operating Profit Margin
+    category: profitability
+    formula: "operate_profit / total_revenue"
+    source: [fin_income]
+    fields: [operate_profit, total_revenue]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0060, ic_ir: 0.08 }
+
+  cicc_gpoa_2021:
+    factor_id: cicc_gpoa_2021
+    name_cn: 总资产毛利率
+    name_en: Gross Profit over Assets
+    category: profitability
+    formula: "(revenue - oper_cost) / total_assets"
+    source: [fin_income, fin_balance]
+    fields: [revenue, oper_cost, total_assets]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0147, ic_ir: 0.20 }
+
+  cicc_cfoa_2021:
+    factor_id: cicc_cfoa_2021
+    name_cn: 经营现金流/总资产
+    name_en: Cash Flow from Operations over Assets
+    category: profitability
+    formula: "n_cashflow_act / total_assets"
+    source: [fin_cashflow, fin_balance]
+    fields: [n_cashflow_act, total_assets]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0201, ic_ir: 0.47 }
+
+  # ================================================================
+  # 二、成长能力 (Growth) 子因子
+  # 选入复合因子 (满足IC>2%, IR>0.3, tstat>3):
+  #   OP_SD, NP_Acc, OP_Q_YOY, NP_SD, QPT,
+  #   NP_Q_YOY, OP_YOY, NP_YOY, OR_YOY
+  # 注: 所有增速类因子均使用"与分母值截面回归取残差"进行调整
+  # ================================================================
+
+  cicc_np_acc_2021:
+    factor_id: cicc_np_acc_2021
+    name_cn: 净利润加速度
+    name_en: Net Profit Acceleration
+    category: growth
+    formula: >-
+      取最近N=8个单季度净利润序列,
+      做二次回归 NP_q = alpha * t^2 + beta * t + c,
+      取alpha为加速度代理变量;
+      单季净利润 = n_income_attr_p(当季末) - n_income_attr_p(上季末),
+      Q1季度直接取当季累计值
+    source: [fin_income]
+    fields: [n_income_attr_p, end_date]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0277, ic_ir: 0.71 }
+
+  cicc_np_q_yoy_2021:
+    factor_id: cicc_np_q_yoy_2021
+    name_cn: 净利润增速（单季度同比）
+    name_en: Net Profit Single-Quarter YoY
+    category: growth
+    formula: >-
+      residual(cross_sectional_regress(q_netprofit_yoy, lag_base_np));
+      对q_netprofit_yoy与上年同期单季净利润做截面回归取残差
+    source: [fin_indicator]
+    fields: [q_netprofit_yoy]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0355, ic_ir: 0.63 }
+
+  cicc_np_qoq_2021:
+    factor_id: cicc_np_qoq_2021
+    name_cn: 净利润增速（单季度环比）
+    name_en: Net Profit Single-Quarter QoQ
+    category: growth
+    formula: >-
+      residual(cross_sectional_regress(q_netprofit_qoq, lag_base_np))
+    source: [fin_indicator]
+    fields: [q_netprofit_qoq]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0180, ic_ir: 0.51 }
+
+  cicc_np_sd_2021:
+    factor_id: cicc_np_sd_2021
+    name_cn: 净利润稳健加速度
+    name_en: Net Profit Stable-growth Delta
+    category: growth
+    formula: >-
+      NP_Stable(t) - NP_Stable(t-1);
+      NP_Stable = mean(q_netprofit_yoy, 过去8个季度)
+                  / std(q_netprofit_yoy, 过去8个季度)
+    source: [fin_indicator]
+    fields: [q_netprofit_yoy]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0238, ic_ir: 0.68 }
+
+  cicc_np_stable_2021:
+    factor_id: cicc_np_stable_2021
+    name_cn: 净利润稳健增速
+    name_en: Net Profit Stable Growth
+    category: growth
+    formula: >-
+      mean(q_netprofit_yoy, 过去8个季度)
+      / std(q_netprofit_yoy, 过去8个季度)
+    source: [fin_indicator]
+    fields: [q_netprofit_yoy]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0161, ic_ir: 0.22 }
+
+  cicc_np_yoy_2021:
+    factor_id: cicc_np_yoy_2021
+    name_cn: 净利润增速（TTM同比）
+    name_en: Net Profit TTM YoY
+    category: growth
+    formula: >-
+      residual(cross_sectional_regress(netprofit_yoy, lag_np_ttm))
+    source: [fin_indicator]
+    fields: [netprofit_yoy]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0301, ic_ir: 0.49 }
+
+  cicc_qpt_2021:
+    factor_id: cicc_qpt_2021
+    name_cn: 业绩趋势因子
+    name_en: Quarterly Profit Trend
+    category: growth
+    formula: >-
+      分层打分法:
+      (1) 依据NP_Q_YOY将全市场均分三组打分(高=3,中=2,低=1);
+      (2) 每组内依据NP_Acc做标准化打分;
+      (3) 两步得分相加为最终得分;
+      月频更新, 优先级: 定期报告 > 业绩快报 > 业绩预告(净利润下限);
+      NEEDS_DATA_DICT: 业绩预告/业绩快报数据(forecast/express)
+    source: [fin_indicator, fin_income]
+    fields: [q_netprofit_yoy, n_income_attr_p, end_date]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0344, ic_ir: 0.57 }
+
+  cicc_op_q_yoy_2021:
+    factor_id: cicc_op_q_yoy_2021
+    name_cn: 营业利润增速（单季度同比）
+    name_en: Operating Profit Single-Quarter YoY
+    category: growth
+    formula: >-
+      residual(cross_sectional_regress(q_op_yoy, lag_base_op));
+      对q_op_yoy与上年同期单季营业利润做截面回归取残差
+    source: [fin_indicator]
+    fields: [q_op_yoy]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0351, ic_ir: 0.68 }
+
+  cicc_op_qoq_2021:
+    factor_id: cicc_op_qoq_2021
+    name_cn: 营业利润增速（单季度环比）
+    name_en: Operating Profit Single-Quarter QoQ
+    category: growth
+    formula: >-
+      residual(cross_sectional_regress(q_op_qoq, lag_base_op))
+    source: [fin_indicator]
+    fields: [q_op_qoq]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0160, ic_ir: 0.51 }
+
+  cicc_op_sd_2021:
+    factor_id: cicc_op_sd_2021
+    name_cn: 营业利润稳健加速度
+    name_en: Operating Profit Stable-growth Delta
+    category: growth
+    formula: >-
+      OP_Stable(t) - OP_Stable(t-1);
+      OP_Stable = mean(q_op_yoy, 过去8个季度)
+                  / std(q_op_yoy, 过去8个季度)
+    source: [fin_indicator]
+    fields: [q_op_yoy]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0255, ic_ir: 0.73 }
+
+  cicc_op_stable_2021:
+    factor_id: cicc_op_stable_2021
+    name_cn: 营业利润稳健增速
+    name_en: Operating Profit Stable Growth
+    category: growth
+    formula: >-
+      mean(q_op_yoy, 过去8个季度)
+      / std(q_op_yoy, 过去8个季度)
+    source: [fin_indicator]
+    fields: [q_op_yoy]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0142, ic_ir: 0.20 }
+
+  cicc_op_yoy_2021:
+    factor_id: cicc_op_yoy_2021
+    name_cn: 营业利润增速（TTM同比）
+    name_en: Operating Profit TTM YoY
+    category: growth
+    formula: >-
+      residual(cross_sectional_regress(op_yoy, lag_op_ttm))
+    source: [fin_indicator]
+    fields: [op_yoy]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0301, ic_ir: 0.53 }
+
+  cicc_or_sd_2021:
+    factor_id: cicc_or_sd_2021
+    name_cn: 营业收入稳健加速度
+    name_en: Revenue Stable-growth Delta
+    category: growth
+    formula: >-
+      OR_Stable(t) - OR_Stable(t-1);
+      OR_Stable = mean(q_gr_yoy, 过去8个季度)
+                  / std(q_gr_yoy, 过去8个季度)
+    source: [fin_indicator]
+    fields: [q_gr_yoy]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0154, ic_ir: 0.44 }
+
+  cicc_or_stable_2021:
+    factor_id: cicc_or_stable_2021
+    name_cn: 营业收入稳健增速
+    name_en: Revenue Stable Growth
+    category: growth
+    formula: >-
+      mean(q_gr_yoy, 过去8个季度)
+      / std(q_gr_yoy, 过去8个季度)
+    source: [fin_indicator]
+    fields: [q_gr_yoy]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0151, ic_ir: 0.22 }
+
+  cicc_or_yoy_2021:
+    factor_id: cicc_or_yoy_2021
+    name_cn: 营业收入增速（TTM同比）
+    name_en: Revenue TTM YoY
+    category: growth
+    formula: >-
+      residual(cross_sectional_regress(or_yoy, lag_revenue_ttm))
+    source: [fin_indicator]
+    fields: [or_yoy]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0242, ic_ir: 0.37 }
+
+  cicc_cfoad_2021:
+    factor_id: cicc_cfoad_2021
+    name_cn: 经营现金流/总资产变动
+    name_en: CFOA Delta
+    category: growth
+    formula: >-
+      cfoa(t) - cfoa(t-1);
+      cfoa = n_cashflow_act / total_assets
+    source: [fin_cashflow, fin_balance]
+    fields: [n_cashflow_act, total_assets]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0117, ic_ir: 0.44 }
+
+  cicc_gpmd_2021:
+    factor_id: cicc_gpmd_2021
+    name_cn: 毛利率变动
+    name_en: Gross Margin Delta
+    category: growth
+    formula: "grossprofit_margin(t) - grossprofit_margin(t-1)"
+    source: [fin_indicator]
+    fields: [grossprofit_margin]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0114, ic_ir: 0.36 }
+
+  cicc_gpoad_2021:
+    factor_id: cicc_gpoad_2021
+    name_cn: 总资产毛利率变动
+    name_en: GPOA Delta
+    category: growth
+    formula: "gpoa(t) - gpoa(t-1)"
+    source: [fin_income, fin_balance]
+    fields: [revenue, oper_cost, total_assets]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0143, ic_ir: 0.34 }
+
+  cicc_npmd_2021:
+    factor_id: cicc_npmd_2021
+    name_cn: 净利率变动
+    name_en: Net Margin Delta
+    category: growth
+    formula: "netprofit_margin(t) - netprofit_margin(t-1)"
+    source: [fin_indicator]
+    fields: [netprofit_margin]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0119, ic_ir: 0.30 }
+
+  cicc_road_2021:
+    factor_id: cicc_road_2021
+    name_cn: ROA变动
+    name_en: ROA Delta
+    category: growth
+    formula: "roa(t) - roa(t-1)"
+    source: [fin_indicator]
+    fields: [roa]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0117, ic_ir: 0.26 }
+
+  cicc_roed_2021:
+    factor_id: cicc_roed_2021
+    name_cn: ROE变动
+    name_en: ROE Delta
+    category: growth
+    formula: "roe(t) - roe(t-1)"
+    source: [fin_indicator]
+    fields: [roe]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0147, ic_ir: 0.31 }
+
+  cicc_roicd_2021:
+    factor_id: cicc_roicd_2021
+    name_cn: 投入资本收益率变动
+    name_en: ROIC Delta
+    category: growth
+    formula: "roic(t) - roic(t-1)"
+    source: [fin_indicator]
+    fields: [roic]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0145, ic_ir: 0.36 }
+
+  # ================================================================
+  # 三、营运效率 (Operation) 子因子
+  # 选入复合因子: ATD, OCFA
+  # ================================================================
+
+  cicc_invt_2021:
+    factor_id: cicc_invt_2021
+    name_cn: 存货周转率
+    name_en: Inventory Turnover
+    category: operation
+    formula: "inv_turn"
+    source: [fin_indicator]
+    fields: [inv_turn]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0023, ic_ir: 0.05 }
+
+  cicc_invtd_2021:
+    factor_id: cicc_invtd_2021
+    name_cn: 存货周转率变动
+    name_en: Inventory Turnover Delta
+    category: operation
+    formula: "inv_turn(t) - inv_turn(t-1)"
+    source: [fin_indicator]
+    fields: [inv_turn]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0097, ic_ir: 0.36 }
+
+  cicc_rat_2021:
+    factor_id: cicc_rat_2021
+    name_cn: 应收周转率
+    name_en: Receivable Turnover
+    category: operation
+    formula: "ar_turn"
+    source: [fin_indicator]
+    fields: [ar_turn]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0059, ic_ir: 0.12 }
+
+  cicc_ratd_2021:
+    factor_id: cicc_ratd_2021
+    name_cn: 应收周转率变动
+    name_en: Receivable Turnover Delta
+    category: operation
+    formula: "ar_turn(t) - ar_turn(t-1)"
+    source: [fin_indicator]
+    fields: [ar_turn]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0122, ic_ir: 0.41 }
+
+  cicc_at_2021:
+    factor_id: cicc_at_2021
+    name_cn: 总资产周转率
+    name_en: Asset Turnover
+    category: operation
+    formula: "assets_turn"
+    source: [fin_indicator]
+    fields: [assets_turn]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0126, ic_ir: 0.27 }
+
+  cicc_atd_2021:
+    factor_id: cicc_atd_2021
+    name_cn: 总资产周转率变动
+    name_en: Asset Turnover Delta
+    category: operation
+    formula: "assets_turn(t) - assets_turn(t-1)"
+    source: [fin_indicator]
+    fields: [assets_turn]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0215, ic_ir: 0.55 }
+
+  cicc_ocfa_2021:
+    factor_id: cicc_ocfa_2021
+    name_cn: 产能利用率提升
+    name_en: Operation Cost on Fixed Assets (residual)
+    category: operation
+    formula: >-
+      个股时间序列滚动回归:
+      (total_revenue - operate_profit) = alpha + beta * fixed_assets + epsilon,
+      取最近一期残差epsilon;
+      其中(total_revenue - operate_profit)为营业总成本的近似
+    source: [fin_income, fin_balance]
+    fields: [total_revenue, operate_profit, fixed_assets]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0173, ic_ir: 0.52 }
+
+  # ================================================================
+  # 四、盈余质量 (Accrual) 子因子
+  # 选入复合因子: APR (该大类无因子满足全部筛选标准，取代表性因子)
+  # ================================================================
+
+  cicc_apr_2021:
+    factor_id: cicc_apr_2021
+    name_cn: 应计利润占比
+    name_en: Accrual Profit Ratio
+    category: accrual
+    formula: "(operate_profit - n_cashflow_act) / operate_profit"
+    source: [fin_income, fin_cashflow]
+    fields: [operate_profit, n_cashflow_act]
+    direction: negative
+    selected_for_composite: true
+    backtest: { ic_mean: -0.0123, ic_ir: -0.42 }
+
+  cicc_aprd_2021:
+    factor_id: cicc_aprd_2021
+    name_cn: 应计利润占比变动
+    name_en: Accrual Ratio Delta
+    category: accrual
+    formula: "apr(t) - apr(t-1)"
+    source: [fin_income, fin_cashflow]
+    fields: [operate_profit, n_cashflow_act]
+    direction: negative
+    selected_for_composite: false
+    backtest: { ic_mean: -0.0033, ic_ir: -0.14 }
+
+  cicc_csr_2021:
+    factor_id: cicc_csr_2021
+    name_cn: 收现比
+    name_en: Cash-to-Sales Ratio
+    category: accrual
+    formula: >-
+      c_inf_fr_operate_a / revenue;
+      原始定义为"销售商品提供劳务收到的现金 / 营业收入",
+      此处以经营活动现金流入小计(c_inf_fr_operate_a)近似
+    source: [fin_cashflow, fin_income]
+    fields: [c_inf_fr_operate_a, revenue]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0069, ic_ir: 0.24 }
+
+  cicc_csrd_2021:
+    factor_id: cicc_csrd_2021
+    name_cn: 收现比变动
+    name_en: CSR Delta
+    category: accrual
+    formula: "csr(t) - csr(t-1)"
+    source: [fin_cashflow, fin_income]
+    fields: [c_inf_fr_operate_a, revenue]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0007, ic_ir: 0.03 }
+
+  # ================================================================
+  # 五、安全性 (Safety) 子因子
+  # 选入复合因子: CCR (该大类无因子满足全部筛选标准，取代表性因子)
+  # ================================================================
+
+  cicc_ccr_2021:
+    factor_id: cicc_ccr_2021
+    name_cn: 现金流动负债比率
+    name_en: Cash Flow to Current Liabilities
+    category: safety
+    formula: "n_cashflow_act / total_cur_liab"
+    source: [fin_cashflow, fin_balance]
+    fields: [n_cashflow_act, total_cur_liab]
+    direction: positive
+    selected_for_composite: true
+    backtest: { ic_mean: 0.0153, ic_ir: 0.39 }
+
+  cicc_ccrd_2021:
+    factor_id: cicc_ccrd_2021
+    name_cn: 现金流动负债比率变动
+    name_en: CCR Delta
+    category: safety
+    formula: "ccr(t) - ccr(t-1)"
+    source: [fin_cashflow, fin_balance]
+    fields: [n_cashflow_act, total_cur_liab]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0109, ic_ir: 0.43 }
+
+  cicc_cr_2021:
+    factor_id: cicc_cr_2021
+    name_cn: 现金比率
+    name_en: Cash Ratio
+    category: safety
+    formula: "cash_ratio"
+    source: [fin_indicator]
+    fields: [cash_ratio]
+    direction: negative
+    selected_for_composite: false
+    backtest: { ic_mean: -0.0073, ic_ir: -0.10 }
+
+  cicc_crd_2021:
+    factor_id: cicc_crd_2021
+    name_cn: 现金比率变动
+    name_en: Cash Ratio Delta
+    category: safety
+    formula: "cash_ratio(t) - cash_ratio(t-1)"
+    source: [fin_indicator]
+    fields: [cash_ratio]
+    direction: negative
+    selected_for_composite: false
+    backtest: { ic_mean: -0.0079, ic_ir: -0.19 }
+
+  cicc_cur_2021:
+    factor_id: cicc_cur_2021
+    name_cn: 流动比率
+    name_en: Current Ratio
+    category: safety
+    formula: "current_ratio"
+    source: [fin_indicator]
+    fields: [current_ratio]
+    direction: negative
+    selected_for_composite: false
+    backtest: { ic_mean: -0.0069, ic_ir: -0.10 }
+
+  cicc_curd_2021:
+    factor_id: cicc_curd_2021
+    name_cn: 流动比率变动
+    name_en: Current Ratio Delta
+    category: safety
+    formula: "current_ratio(t) - current_ratio(t-1)"
+    source: [fin_indicator]
+    fields: [current_ratio]
+    direction: negative
+    selected_for_composite: false
+    backtest: { ic_mean: -0.0103, ic_ir: -0.24 }
+
+  cicc_dad_2021:
+    factor_id: cicc_dad_2021
+    name_cn: 资产负债率变动
+    name_en: Debt-to-Asset Delta
+    category: safety
+    formula: "debt_to_assets(t) - debt_to_assets(t-1)"
+    source: [fin_indicator]
+    fields: [debt_to_assets]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0102, ic_ir: 0.31 }
+
+  cicc_debt_asset_2021:
+    factor_id: cicc_debt_asset_2021
+    name_cn: 资产负债率
+    name_en: Debt to Asset Ratio
+    category: safety
+    formula: "debt_to_assets"
+    source: [fin_indicator]
+    fields: [debt_to_assets]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0024, ic_ir: 0.03 }
+
+  cicc_dte_2021:
+    factor_id: cicc_dte_2021
+    name_cn: 产权比率
+    name_en: Debt to Equity
+    category: safety
+    formula: "debt_to_eqt"
+    source: [fin_indicator]
+    fields: [debt_to_eqt]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0030, ic_ir: 0.05 }
+
+  cicc_dted_2021:
+    factor_id: cicc_dted_2021
+    name_cn: 产权比率变动
+    name_en: DTE Delta
+    category: safety
+    formula: "debt_to_eqt(t) - debt_to_eqt(t-1)"
+    source: [fin_indicator]
+    fields: [debt_to_eqt]
+    direction: positive
+    selected_for_composite: false
+    backtest: { ic_mean: 0.0060, ic_ir: 0.21 }
+
+  cicc_qr_2021:
+    factor_id: cicc_qr_2021
+    name_cn: 速动比率
+    name_en: Quick Ratio
+    category: safety
+    formula: "quick_ratio"
+    source: [fin_indicator]
+    fields: [quick_ratio]
+    direction: negative
+    selected_for_composite: false
+    backtest: { ic_mean: -0.0062, ic_ir: -0.09 }
+
+  cicc_qrd_2021:
+    factor_id: cicc_qrd_2021
+    name_cn: 速动比率变动
+    name_en: Quick Ratio Delta
+    category: safety
+    formula: "quick_ratio(t) - quick_ratio(t-1)"
+    source: [fin_indicator]
+    fields: [quick_ratio]
+    direction: negative
+    selected_for_composite: false
+    backtest: { ic_mean: -0.0078, ic_ir: -0.18 }
+
+  # ================================================================
+  # 六、公司治理 (Governance) 子因子
+  # 5大指标按方向调整后等权相加
+  # ================================================================
+
+  cicc_mc_percent_2021:
+    factor_id: cicc_mc_percent_2021
+    name_cn: 流通股占比
+    name_en: Free Float Ratio
+    category: governance
+    formula: "free_share / total_share"
+    source: [daily_basic]
+    fields: [free_share, total_share]
+    direction: positive
+    weight_in_governance: 1
+    selected_for_composite: true
+
+  cicc_mana_income_2021:
+    factor_id: cicc_mana_income_2021
+    name_cn: 管理层薪酬（前十）
+    name_en: Top Management Compensation
+    category: governance
+    formula: "NEEDS_DATA_DICT"
+    source: []
+    fields: []
+    direction: positive
+    weight_in_governance: 1
+    selected_for_composite: true
+
+  cicc_mana_share_num_2021:
+    factor_id: cicc_mana_share_num_2021
+    name_cn: 管理层持股数量
+    name_en: Management Shareholding
+    category: governance
+    formula: "NEEDS_DATA_DICT"
+    source: []
+    fields: []
+    direction: positive
+    weight_in_governance: 1
+    selected_for_composite: true
+
+  cicc_deal_method_2021:
+    factor_id: cicc_deal_method_2021
+    name_cn: 受证监会/交易所处罚情况
+    name_en: Regulatory Penalty
+    category: governance
+    formula: "NEEDS_DATA_DICT"
+    source: []
+    fields: []
+    direction: negative
+    weight_in_governance: -1
+    selected_for_composite: true
+
+  cicc_stock_incentive_2021:
+    factor_id: cicc_stock_incentive_2021
+    name_cn: 是否实施股权激励
+    name_en: Stock Incentive Plan
+    category: governance
+    formula: "NEEDS_DATA_DICT"
+    source: []
+    fields: []
+    direction: positive
+    weight_in_governance: 1
+    selected_for_composite: true
+
+  # ================================================================
+  # 六大类复合因子 (Category Composites)
+  # ================================================================
+
+  cicc_profitability_composite_2021:
+    factor_id: cicc_profitability_composite_2021
+    name_cn: 盈利能力复合因子
+    name_en: Profitability Composite
+    category: composite_category
+    combination:
+      method: equal_weight
+      sub_factors:
+        - cicc_cfoa_2021
+        - cicc_roe_2021
+        - cicc_roic_2021
+    backtest:
+      ic_mean: 0.0167
+      ic_ir: 0.27
+      long_short_return: 0.051
+      sharpe: 0.81
+
+  cicc_growth_composite_2021:
+    factor_id: cicc_growth_composite_2021
+    name_cn: 成长能力复合因子
+    name_en: Growth Composite
+    category: composite_category
+    combination:
+      method: equal_weight
+      sub_factors:
+        - cicc_op_sd_2021
+        - cicc_np_acc_2021
+        - cicc_op_q_yoy_2021
+        - cicc_np_sd_2021
+        - cicc_qpt_2021
+        - cicc_np_q_yoy_2021
+        - cicc_op_yoy_2021
+        - cicc_np_yoy_2021
+        - cicc_or_yoy_2021
+    backtest:
+      ic_mean: 0.0339
+      ic_ir: 0.74
+      long_short_return: 0.116
+      sharpe: 2.88
+
+  cicc_operation_composite_2021:
+    factor_id: cicc_operation_composite_2021
+    name_cn: 营运效率复合因子
+    name_en: Operation Composite
+    category: composite_category
+    combination:
+      method: equal_weight
+      sub_factors:
+        - cicc_atd_2021
+        - cicc_ocfa_2021
+    backtest:
+      ic_mean: 0.0221
+      ic_ir: 0.58
+      long_short_return: 0.080
+      sharpe: 2.31
+
+  cicc_accrual_composite_2021:
+    factor_id: cicc_accrual_composite_2021
+    name_cn: 盈余质量复合因子
+    name_en: Accrual Composite
+    category: composite_category
+    combination:
+      method: equal_weight
+      sub_factors:
+        - cicc_apr_2021
+    backtest:
+      ic_mean: 0.0102
+      ic_ir: 0.35
+      long_short_return: 0.0311
+      sharpe: 0.52
+
+  cicc_safety_composite_2021:
+    factor_id: cicc_safety_composite_2021
+    name_cn: 安全性复合因子
+    name_en: Safety Composite
+    category: composite_category
+    combination:
+      method: equal_weight
+      sub_factors:
+        - cicc_ccr_2021
+    backtest:
+      ic_mean: 0.0151
+      ic_ir: 0.38
+      long_short_return: 0.0498
+      sharpe: 0.69
+
+  cicc_governance_composite_2021:
+    factor_id: cicc_governance_composite_2021
+    name_cn: 公司治理复合因子
+    name_en: Governance Composite
+    category: composite_category
+    combination:
+      method: equal_weight
+      sub_factors:
+        - cicc_mc_percent_2021
+        - cicc_mana_income_2021
+        - cicc_mana_share_num_2021
+        - cicc_deal_method_2021
+        - cicc_stock_incentive_2021
+      note: "各指标按direction调整方向后等权相加"
+    backtest:
+      ic_mean: 0.0279
+      ic_ir: 0.49
+      long_short_return: 0.023
+      sharpe: 0.14
+
+  # ================================================================
+  # QQC 综合质量因子 (最终复合因子)
+  # ================================================================
+
+  cicc_qqc_2021:
+    factor_id: cicc_qqc_2021
+    name_cn: QQC综合质量因子
+    name_en: Quantified Quality Composite
+    category: composite_final
+    combination:
+      method: equal_weight
+      sub_factors:
+        - cicc_profitability_composite_2021
+        - cicc_growth_composite_2021
+        - cicc_operation_composite_2021
+        - cicc_accrual_composite_2021
+        - cicc_safety_composite_2021
+        - cicc_governance_composite_2021
+      note: >-
+        六大类因子等权加权以减少过拟合;
+        备选方案: IC加权(ICW_QQC, 滚动12个月IC)
+        或IC_IR加权(IRW_QQC, 滚动12个月IC_IR),
+        但等权方式样本外表现更稳健
+    backtest:
+      all_market:
+        ic_mean: 0.0451
+        ic_ir: 0.87
+        long_short_return: 0.111
+        sharpe: 1.78
+      csi_500:
+        ic_mean: 0.0567
+        ic_ir: 0.82
+        long_short_return: 0.158
+        sharpe: 2.18
+      hs_300:
+        ic_mean: 0.0384
+        ic_ir: 0.57
+        long_short_return: 0.147
+        sharpe: 1.62
+      out_of_sample:
+        period: ["2019-01-01", "2020-12-31"]
+        ic_mean: 0.0584
+        monthly_win_rate: 0.875
+
+  # ================================================================
+  # 沪深300指数增强模型 辅助因子
+  # ================================================================
+
+  cicc_bp_lr_2021:
+    factor_id: cicc_bp_lr_2021
+    name_cn: 账面市值比
+    name_en: Book-to-Price
+    category: index_enhancement
+    formula: "1.0 / pb"
+    source: [daily_basic]
+    fields: [pb]
+    direction: positive
+
+  cicc_momentum_24m_2021:
+    factor_id: cicc_momentum_24m_2021
+    name_cn: 24个月动量
+    name_en: 24-Month Momentum
+    category: index_enhancement
+    formula: >-
+      close_adj(t) / close_adj(t-24M) - 1;
+      close_adj = close * adj_factor，使用复权收盘价计算
+    source: [daily_unadj, adj_factor]
+    fields: [close, adj_factor]
+    direction: positive
+
+  cicc_turnover_1m_2021:
+    factor_id: cicc_turnover_1m_2021
+    name_cn: 1个月换手率
+    name_en: 1-Month Average Turnover
+    category: index_enhancement
+    formula: "mean(turnover_rate_f, 过去20个交易日)"
+    source: [daily_basic]
+    fields: [turnover_rate_f]
+    direction: negative
+
+  cicc_dp_2021:
+    factor_id: cicc_dp_2021
+    name_cn: 股息率（TTM）
+    name_en: Dividend Yield (TTM)
+    category: index_enhancement
+    formula: "dv_ttm"
+    source: [daily_basic]
+    fields: [dv_ttm]
+    direction: positive
+
+  cicc_eep_2021:
+    factor_id: cicc_eep_2021
+    name_cn: 一致预期EP
+    name_en: Consensus Expected EP
+    category: index_enhancement
+    formula: "NEEDS_DATA_DICT"
+    source: []
+    fields: []
+    direction: positive
+
+  cicc_eechange_3m_2021:
+    factor_id: cicc_eechange_3m_2021
+    name_cn: 一致预期净利润3个月变动
+    name_en: Consensus NP 3-Month Change
+    category: index_enhancement
+    formula: "NEEDS_DATA_DICT"
+    source: []
+    fields: []
+    direction: positive
+
+  # ================================================================
+  # 沪深300指数增强组合模型
+  # ================================================================
+
+  cicc_hs300_enhance_2021:
+    factor_id: cicc_hs300_enhance_2021
+    name_cn: 基于QQC的沪深300指数增强模型
+    name_en: QQC-based HS300 Index Enhancement
+    category: portfolio_model
+    combination:
+      method: rolling_24m_ic_ir_weighted
+      sub_factors:
+        - cicc_bp_lr_2021
+        - cicc_momentum_24m_2021
+        - cicc_turnover_1m_2021
+        - cicc_dp_2021
+        - cicc_eep_2021
+        - cicc_eechange_3m_2021
+        - cicc_qqc_2021
+      constraints:
+        qqc_min_weight: 0.50
+        note: "QQC因子权重若小于50%则调至50%，其他因子再做归一化处理"
+    optimization:
+      universe: hs300_constituents
+      industry_deviation_max: 0.05
+      size_exposure_max: 0.05
+      stock_weight_deviation_max: 0.01
+      rebalance: monthly
+      cost_one_way: 0.003
+    backtest:
+      in_sample:
+        period: ["2011-01-01", "2018-12-31"]
+        annual_excess_return: 0.1047
+        tracking_error: 0.0337
+        information_ratio: 3.11
+        monthly_win_rate: 0.79
+        max_relative_drawdown: -0.039
+      out_of_sample:
+        period: ["2019-01-01", "2020-12-31"]
+        annual_excess_return: 0.1502
+        tracking_error: 0.0365
+        information_ratio: 4.11
