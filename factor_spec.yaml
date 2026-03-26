@@ -1,0 +1,446 @@
+# ============================================================
+# 四象限风格轮动因子定义
+# 研报: 量化多因子系列（11）：如何捕捉四象限的风格轮动？
+# 发行方: 中金公司 (CICC)
+# 作者: 周萧潇、陈宜筠、古翔
+# 发布日期: 2023-03-11
+# ============================================================
+
+meta:
+  report_title: "量化多因子系列（11）：如何捕捉四象限的风格轮动？"
+  publisher: CICC
+  authors: ["周萧潇", "陈宜筠", "古翔"]
+  publish_date: "2023-03-11"
+  year: 2023
+
+model:
+  name: four_quadrant_style_rotation
+  description: >
+    将大盘/小盘与成长/价值两个维度结合，构建四象限风格轮动模型。
+    从市场状态、市场情绪、宏观环境三个维度筛选出15个指标，
+    通过标准化、极性调整、胜率加权后复合为二维得分，
+    最终通过坐标法确定四象限配置权重。
+  frequency: monthly
+
+  data:
+    align_by: ann_date
+
+  combination:
+    method: equal_weight
+
+  standardization:
+    zscore_lookback: 6          # 滚动6期计算z-score
+    win_rate_lookback: 4        # 滚动4期计算胜率
+    win_rate_formula: "final_score = 0.5 * (1 + win_rate) * polarity_adjusted_zscore"
+    win_rate_definition: "过去n期中，调整极性后的标准化得分为正的次数占比"
+    polarity_convention: "大盘=正, 小盘=负; 成长=正, 价值=负"
+
+  category_composite:
+    description: >
+      每个大类（市场状态/市场情绪/宏观环境）内,
+      先分别计算特有指标等权均分与全部指标等权均分,
+      再对两者取平均作为大类得分（相当于对重合指标降权）。
+    formula: "category_score = 0.5 * mean(exclusive_indicators) + 0.5 * mean(all_indicators)"
+
+  dimension_composite:
+    description: "三个大类得分等权平均得到单维度复合得分"
+    formula: "dimension_score = mean(market_state_score, market_sentiment_score, macro_score)"
+
+  quadrant_allocation:
+    method: coordinate_method
+    description: >
+      将二维复合得分映射至四象限坐标系，记坐标为(A, B)，
+      令 a=|A|, b=|B|, c=sqrt(a^2+b^2)。
+      重仓推荐象限(权重=2c/(a+b+2c))，
+      轻配相邻两象限(权重分别为 a/(a+b+2c) 和 b/(a+b+2c))，
+      不配对角象限(权重=0)。
+    weights:
+      recommended: "2c / (a + b + 2c)"
+      adjacent_1: "a / (a + b + 2c)"
+      adjacent_2: "b / (a + b + 2c)"
+      opposite: 0
+
+# ============================================================
+# 维度与指标映射
+# ============================================================
+dimensions:
+  size:
+    name_cn: 大小盘维度
+    positive_direction: large_cap
+    negative_direction: small_cap
+    categories:
+      market_state:
+        exclusive:
+          - cicc_size_pb_ratio_pctile_2023
+          - cicc_size_relative_turnover_2023
+          - cicc_all_a_turnover_pctile_2023
+          - cicc_csi1000_ar_2023
+        overlap:
+          - cicc_size_return_diff_2023
+      market_sentiment:
+        exclusive:
+          - cicc_new_high_ratio_2023
+          - cicc_put_call_ratio_2023
+        overlap:
+          - cicc_equity_fund_issuance_2023
+      macro:
+        exclusive:
+          - cicc_export_yoy_2023
+        overlap:
+          - cicc_term_spread_2023
+
+  growth_value:
+    name_cn: 成长价值维度
+    positive_direction: growth
+    negative_direction: value
+    categories:
+      market_state:
+        exclusive:
+          - cicc_gv_return_diff_2023
+        overlap:
+          - cicc_size_return_diff_2023
+      market_sentiment:
+        exclusive:
+          - cicc_new_investor_count_2023
+          - cicc_china_vix_2023
+        overlap:
+          - cicc_equity_fund_issuance_2023
+      macro:
+        exclusive:
+          - cicc_ppi_yoy_2023
+          - cicc_m2_m1_spread_2023
+        overlap:
+          - cicc_term_spread_2023
+
+# ============================================================
+# 15个入选因子定义
+# ============================================================
+factors:
+
+  # ----------------------------------------------------------
+  # 重合指标（对大小盘与成长价值均有效）
+  # ----------------------------------------------------------
+
+  - factor_id: cicc_size_return_diff_2023
+    name_cn: 大小盘收益差值
+    category: market_state
+    applicable_dimensions:
+      size:
+        polarity: large_cap       # 指标高→大盘占优（动量）
+        polarity_sign: +1
+      growth_value:
+        polarity: value           # 沪深300偏价值，指标高→价值占优
+        polarity_sign: -1
+    description: >
+      沪深300月收益率减去中证1000月收益率，代表大小盘动量。
+      对成长价值维度也有预测作用，因沪深300偏价值、中证1000偏成长。
+    formula: >
+      monthly_return(index_daily, ts_code='000300.SH')
+      - monthly_return(index_daily, ts_code='000852.SH')
+      其中 monthly_return = close_t / close_{t-1} - 1（取月末收盘价）
+    source:
+      - index_daily
+    fields:
+      - index_daily.ts_code
+      - index_daily.trade_date
+      - index_daily.close
+
+  - factor_id: cicc_equity_fund_issuance_2023
+    name_cn: 偏股基金募资额
+    category: market_sentiment
+    applicable_dimensions:
+      size:
+        polarity: large_cap       # 机构资金涌入→利好大盘
+        polarity_sign: +1
+      growth_value:
+        polarity: value           # 机构偏好价值股
+        polarity_sign: -1
+    description: >
+      偏股型基金近1周的发行份额，代表资金流向和机构情绪。
+      当偏股型基金发行频繁时，机构资金入市，利好大盘价值风格。
+    formula: "NEEDS_DATA_DICT — 需要偏股型基金周度发行份额数据，当前数据库无此表"
+    source:
+      - "NEEDS_DATA_DICT(基金发行数据表)"
+    fields:
+      - "NEEDS_DATA_DICT(fund_issue.issue_amount 或等效字段)"
+
+  - factor_id: cicc_term_spread_2023
+    name_cn: 期限利差
+    category: macro
+    applicable_dimensions:
+      size:
+        polarity: small_cap       # 利差走阔→小盘占优
+        polarity_sign: -1
+      growth_value:
+        polarity: growth          # 利差走阔→成长占优
+        polarity_sign: +1
+    description: >
+      10年期国债到期收益率与1年期国债到期收益率的差值。
+      期限利差收敛时大盘价值占优，走阔时小盘成长占优。
+    formula: "NEEDS_DATA_DICT — 需要国债到期收益率数据: yield_10y - yield_1y"
+    source:
+      - "NEEDS_DATA_DICT(国债收益率数据表)"
+    fields:
+      - "NEEDS_DATA_DICT(bond_yield.yield_10y, bond_yield.yield_1y)"
+
+  # ----------------------------------------------------------
+  # 大小盘维度特有指标 — 市场状态
+  # ----------------------------------------------------------
+
+  - factor_id: cicc_size_pb_ratio_pctile_2023
+    name_cn: 大小盘PB比值分位数
+    category: market_state
+    applicable_dimensions:
+      size:
+        polarity: large_cap       # 比值高位→大盘动量延续
+        polarity_sign: +1
+    description: >
+      沪深300指数PB除以中证1000指数PB的比值，取过去两年（24个月）的滚动分位数。
+      是一种估值动量指标，比值高说明大盘相对小盘估值占优。
+    formula: >
+      NEEDS_DATA_DICT — 需要指数级别PB数据或指数成分股权重数据。
+      rolling_percentile(PB_000300.SH / PB_000852.SH, window=24个月)
+    source:
+      - "NEEDS_DATA_DICT(指数估值数据表 或 index_constituents + daily_basic)"
+    fields:
+      - "NEEDS_DATA_DICT(index_valuation.pb 或 index_constituents + daily_basic.pb)"
+
+  - factor_id: cicc_size_relative_turnover_2023
+    name_cn: 大小盘相对换手率
+    category: market_state
+    applicable_dimensions:
+      size:
+        polarity: small_cap       # 大盘过热→反转→小盘占优
+        polarity_sign: -1
+    description: >
+      沪深300换手率与中证1000换手率的比值在过去3个月求和。
+      当相对换手率处于高位时，大盘交易过热，市场风格向小盘转向（反转指标）。
+    formula: >
+      NEEDS_DATA_DICT — 需要指数级别换手率数据。
+      SUM(turnover_rate_000300.SH / turnover_rate_000852.SH, 过去3个月)
+    source:
+      - "NEEDS_DATA_DICT(指数换手率数据表)"
+    fields:
+      - "NEEDS_DATA_DICT(index_turnover.turnover_rate)"
+
+  - factor_id: cicc_all_a_turnover_pctile_2023
+    name_cn: 全A换手率在过去两年分位数
+    category: market_state
+    applicable_dimensions:
+      size:
+        polarity: small_cap       # 换手率高→风险偏好高→小盘占优
+        polarity_sign: -1
+    description: >
+      全A市场换手率在过去两年（24个月/约500交易日）的滚动分位数。
+      换手率较高时期往往小盘股相对表现较好，反映市场活跃度与风险偏好。
+      此处用全A个股换手率均值近似替代全A指数换手率。
+    formula: >
+      all_a_turnover = MEAN(daily_basic.turnover_rate) GROUP BY trade_date（全市场日均换手率）;
+      monthly_avg = 月内all_a_turnover取均值;
+      result = rolling_percentile(monthly_avg, window=24个月)
+    source:
+      - daily_basic
+    fields:
+      - daily_basic.ts_code
+      - daily_basic.trade_date
+      - daily_basic.turnover_rate
+
+  - factor_id: cicc_csi1000_ar_2023
+    name_cn: 中证1000人气指标(AR)
+    category: market_state
+    applicable_dimensions:
+      size:
+        polarity: small_cap       # AR高→小盘人气旺→小盘占优
+        polarity_sign: -1
+    description: >
+      基于中证1000指数日线数据计算的人气指标(AR)。
+      以当天开盘价为基础，反映过去250个交易日内投资者的买卖人气。
+      AR越大代表市场对中证1000（小盘股）越乐观。
+    formula: >
+      AR = SUM(high - open, 250) / SUM(open - low, 250)
+      其中 high/open/low 取 index_daily 中 ts_code='000852.SH' 的对应字段，
+      SUM 为过去250个交易日的滚动求和。
+    source:
+      - index_daily
+    fields:
+      - index_daily.ts_code
+      - index_daily.trade_date
+      - index_daily.high
+      - index_daily.open
+      - index_daily.low
+
+  # ----------------------------------------------------------
+  # 大小盘维度特有指标 — 市场情绪
+  # ----------------------------------------------------------
+
+  - factor_id: cicc_new_high_ratio_2023
+    name_cn: 创新高个股占比
+    category: market_sentiment
+    applicable_dimensions:
+      size:
+        polarity: small_cap       # 创新高占比高→小盘乐观
+        polarity_sign: -1
+    description: >
+      当天创新高的个股数量占全部股票数量的比例，剔除上市5个交易日以内的股票。
+      小盘股更容易创新高，该指标高位意味着小盘风格乐观。
+    formula: >
+      new_high_count = COUNT(
+        ts_code WHERE daily_unadj.close >= MAX(daily_unadj.close, 过去250交易日)
+        AND trade_date - stock_list.list_date > 5个交易日
+      );
+      total_count = COUNT(
+        DISTINCT ts_code WHERE trade_date - stock_list.list_date > 5个交易日
+      );
+      result = new_high_count / total_count
+    source:
+      - daily_unadj
+      - stock_list
+    fields:
+      - daily_unadj.ts_code
+      - daily_unadj.trade_date
+      - daily_unadj.close
+      - stock_list.ts_code
+      - stock_list.list_date
+
+  - factor_id: cicc_put_call_ratio_2023
+    name_cn: 期权认沽认购比
+    category: market_sentiment
+    applicable_dimensions:
+      size:
+        polarity: small_cap       # 看跌情绪高→大盘看空→小盘占优
+        polarity_sign: -1
+    description: >
+      50ETF所有看跌期权合约当日总成交量与所有看涨期权合约当日总成交量的比值。
+      该指标较高时意味着市场对大盘股(50ETF)看跌情绪较大，小盘风格相对占优。
+    formula: >
+      NEEDS_DATA_DICT — 需要50ETF期权成交量数据。
+      put_call_ratio = SUM(put_option_volume) / SUM(call_option_volume)
+    source:
+      - "NEEDS_DATA_DICT(期权成交量数据表)"
+    fields:
+      - "NEEDS_DATA_DICT(option_daily.put_volume, option_daily.call_volume)"
+
+  # ----------------------------------------------------------
+  # 大小盘维度特有指标 — 宏观环境
+  # ----------------------------------------------------------
+
+  - factor_id: cicc_export_yoy_2023
+    name_cn: 出口额月同比
+    category: macro
+    applicable_dimensions:
+      size:
+        polarity: small_cap       # 出口低位→小盘占优
+        polarity_sign: -1
+    description: >
+      中国出口额月度同比增速。出口额降低时大市值公司走势下降，
+      市场转向小盘风格。大盘风格对出口额变化更敏感。
+    formula: "NEEDS_DATA_DICT — 需要宏观经济出口额月同比数据"
+    source:
+      - "NEEDS_DATA_DICT(宏观经济数据表)"
+    fields:
+      - "NEEDS_DATA_DICT(macro_data.export_yoy)"
+
+  # ----------------------------------------------------------
+  # 成长价值维度特有指标 — 市场状态
+  # ----------------------------------------------------------
+
+  - factor_id: cicc_gv_return_diff_2023
+    name_cn: 成长价值收益差值
+    category: market_state
+    applicable_dimensions:
+      growth_value:
+        polarity: growth          # 差值高→成长动量
+        polarity_sign: +1
+    description: >
+      （巨潮大盘成长+巨潮小盘成长）月收益率减去（巨潮大盘价值+巨潮小盘价值）月收益率。
+      动量指标，差值高说明成长风格占优，趋势将延续。
+    formula: >
+      growth_ret = monthly_return(index_daily, '399372.SZ')
+                 + monthly_return(index_daily, '399376.SZ');
+      value_ret  = monthly_return(index_daily, '399373.SZ')
+                 + monthly_return(index_daily, '399377.SZ');
+      result = growth_ret - value_ret;
+      其中 monthly_return = close_t / close_{t-1} - 1（取月末收盘价）;
+      巨潮大盘成长='399372.SZ', 巨潮小盘成长='399376.SZ',
+      巨潮大盘价值='399373.SZ', 巨潮小盘价值='399377.SZ'
+    source:
+      - index_daily
+    fields:
+      - index_daily.ts_code
+      - index_daily.trade_date
+      - index_daily.close
+
+  # ----------------------------------------------------------
+  # 成长价值维度特有指标 — 市场情绪
+  # ----------------------------------------------------------
+
+  - factor_id: cicc_new_investor_count_2023
+    name_cn: 新增投资者数量
+    category: market_sentiment
+    applicable_dimensions:
+      growth_value:
+        polarity: value           # 散户入场加速→成长过热→转向价值
+        polarity_sign: -1
+    description: >
+      过去一个月新增股票开户数量，反映散户投资情绪。
+      散户偏好成长/小盘，当散户入市加速时成长情绪过热，未来转向价值风格。
+    formula: "NEEDS_DATA_DICT — 需要新增投资者（开户数）数据"
+    source:
+      - "NEEDS_DATA_DICT(投资者开户数据表)"
+    fields:
+      - "NEEDS_DATA_DICT(investor_data.new_investor_count)"
+
+  - factor_id: cicc_china_vix_2023
+    name_cn: 中国波指
+    category: market_sentiment
+    applicable_dimensions:
+      growth_value:
+        polarity: growth          # 波指高→价值波动大→转向成长
+        polarity_sign: +1
+    description: >
+      基于50ETF期权的VIX指数（iVIX）。
+      50ETF中价值股占多数，波指较高意味着价值股波动较大，
+      投资者更倾向于投资成长风格。
+    formula: "NEEDS_DATA_DICT — 需要中国波指(iVIX)数据"
+    source:
+      - "NEEDS_DATA_DICT(iVIX数据表 或 期权波动率指数表)"
+    fields:
+      - "NEEDS_DATA_DICT(vix_data.ivix)"
+
+  # ----------------------------------------------------------
+  # 成长价值维度特有指标 — 宏观环境
+  # ----------------------------------------------------------
+
+  - factor_id: cicc_ppi_yoy_2023
+    name_cn: PPI月同比
+    category: macro
+    applicable_dimensions:
+      growth_value:
+        polarity: value           # PPI高→生产者利润高→价值占优
+        polarity_sign: -1
+    description: >
+      工业品出厂价格指数(PPI)月同比。
+      PPI高时原材料和工业品价格上升，企业生产供不应求，
+      价值风格占优；PPI低时产能过剩，成长相对价值较优。
+    formula: "NEEDS_DATA_DICT — 需要PPI月同比宏观数据"
+    source:
+      - "NEEDS_DATA_DICT(宏观经济数据表)"
+    fields:
+      - "NEEDS_DATA_DICT(macro_data.ppi_yoy)"
+
+  - factor_id: cicc_m2_m1_spread_2023
+    name_cn: M2增速与M1增速差值
+    category: macro
+    applicable_dimensions:
+      growth_value:
+        polarity: value           # M2-M1高→流动性紧→价值占优
+        polarity_sign: -1
+    description: >
+      M2同比增速减去M1同比增速。M2增速高于M1增速时，
+      企业和居民选择储蓄，市场流动性面临压力，经济运行回落，
+      价值相对成长占优；反之成长占优。
+    formula: "NEEDS_DATA_DICT — 需要M2/M1月同比增速宏观数据: m2_yoy - m1_yoy"
+    source:
+      - "NEEDS_DATA_DICT(宏观经济数据表)"
+    fields:
+      - "NEEDS_DATA_DICT(macro_data.m2_yoy, macro_data.m1_yoy)"
