@@ -1,0 +1,1275 @@
+# =============================================================================
+# 高频因子手册 - 因子规格定义
+# 来源: 中金《量化多因子系列（12）：高频因子手册》(2024-01-15)
+# 发行方: CICC (中金公司)
+# 分析师: 周萧潇、郑文才、陈宜筠、胡骥聪、古翔、刘均伟
+# =============================================================================
+
+meta:
+  report_title: "量化多因子系列（12）：高频因子手册"
+  report_date: "2024-01-15"
+  publisher: cicc
+  authors:
+    - 周萧潇
+    - 郑文才
+    - 陈宜筠
+    - 胡骥聪
+    - 古翔
+    - 刘均伟
+  test_period: "2013-01-04 ~ 2023-12-01"
+  total_base_factors: 79
+  total_composite_factors: 8
+  note: >
+    本研报因子基于 Level2 日内高频数据（分钟K线、3秒快照、逐笔成交）构建。
+    当前数据字典仅包含日/周/月频数据，绝大多数因子需要额外的高频数据源。
+    标记 NEEDS_DATA_DICT 的因子表示所需字段不在当前 a_share.db 中。
+
+data:
+  align_by: ann_date
+  universe_filter:
+    exclude_st: true
+    exclude_suspended: true
+    exclude_limit_up_down: true
+    exclude_listed_less_than: 252  # 上市未满一年(约252个交易日)
+  filter_tables:
+    st_status:
+      fields: [ts_code, trade_date, st_type]
+    suspension:
+      fields: [ts_code, trade_date, suspend_type]
+    limit_price:
+      fields: [ts_code, trade_date, up_limit, down_limit]
+    stock_list:
+      fields: [ts_code, list_date, is_delisted]
+    daily_unadj:
+      fields: [ts_code, trade_date, close, high, low]
+
+combination:
+  method: equal_weight
+
+processing_methods:
+  description: "每个原始因子有四种日度→期度聚合方法，以后缀区分"
+  _o: "每期取最后一个有效值 (last observation)"
+  _m: "每期取当期算术平均 (arithmetic mean)"
+  _z: "每期取 z-score 标准分 (z-score)"
+  _std: "每期取当期标准差 (standard deviation)"
+
+# =============================================================================
+# 第一大类: 动量反转因子 (Momentum / Reversal)
+# 细分: 分段动量、量能动量、QRS动量
+# =============================================================================
+
+factors:
+
+  # ---------------------------------------------------------------------------
+  # 1.1 分段动量 (Segmented Momentum)
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_mmt_last30_2024
+    name_cn: 尾盘30分钟动量
+    name_en: Last 30-min Momentum
+    category: momentum_reversal
+    subcategory: segmented_momentum
+    description: >
+      收盘前30分钟（14:30-15:00）的累计收益率，
+      反映尾盘交易阶段的价格趋势信息。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(ret_1min[t]) for t in [14:30, 15:00], 其中 ret_1min = close_1min(t)/close_1min(t-1) - 1"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std, _z]
+    reference_metrics:
+      全市场_weekly_long_short_annual: "47%"
+      全市场_monthly_ICIR: "1.00"
+      全市场_monthly_long_excess: "5.6%"
+
+  - factor_id: cicc_mmt_between_2024
+    name_cn: 中间时段动量
+    name_en: Mid-session Momentum
+    category: momentum_reversal
+    subcategory: segmented_momentum
+    description: >
+      去除开盘首30分钟和收盘末30分钟后的中间时段累计收益率，
+      即 10:00-14:30 的日内收益。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: close_1min(14:30)/close_1min(10:00) - 1"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_m]
+
+  - factor_id: cicc_mmt_pm_2024
+    name_cn: 下午时段动量
+    name_en: Afternoon Momentum
+    category: momentum_reversal
+    subcategory: segmented_momentum
+    description: >
+      下午交易时段（13:00-15:00）的累计收益率。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: close_1min(15:00)/close_1min(13:00) - 1"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_m, _std]
+    reference_metrics:
+      全市场_weekly_long_short_annual: "58%"
+
+  - factor_id: cicc_mmt_am_2024
+    name_cn: 上午时段动量
+    name_en: Morning Momentum
+    category: momentum_reversal
+    subcategory: segmented_momentum
+    description: >
+      上午交易时段（09:30-11:30）的累计收益率。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: close_1min(11:30)/open_1min(09:30) - 1"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_m, _std]
+
+  # ---------------------------------------------------------------------------
+  # 1.2 量能动量 (Volume-weighted Momentum)
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_mmt_top20VolumeRet_2024
+    name_cn: 高量能K线动量
+    name_en: Top-20 Volume Bar Return
+    category: momentum_reversal
+    subcategory: volume_momentum
+    description: >
+      日内成交量最大的20根分钟K线对应的收益率之和。
+      捕捉高成交量时段的价格动量信息。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(ret_1min[i]) for i in top_20_by_vol_1min, 其中 ret_1min = close_1min/open_1min - 1"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std, _o]
+    reference_metrics:
+      全市场_monthly_IC_mean: "-9.52%"
+      沪深300_weekly_long_short_annual: "27%"
+
+  - factor_id: cicc_mmt_bot20VolumeRet_2024
+    name_cn: 低量能K线动量
+    name_en: Bottom-20 Volume Bar Return
+    category: momentum_reversal
+    subcategory: volume_momentum
+    description: >
+      日内成交量最小的20根分钟K线对应的收益率之和。
+      与 mmt_top20VolumeRet 互补，刻画低活跃时段动量。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(ret_1min[i]) for i in bottom_20_by_vol_1min"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std, _o]
+
+  # ---------------------------------------------------------------------------
+  # 1.3 QRS 动量 (Quantitative Relative Strength)
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_mmt_qrs_2024
+    name_cn: 日内QRS动量指标
+    name_en: Intraday QRS Indicator
+    category: momentum_reversal
+    subcategory: qrs_momentum
+    description: >
+      将日度QRS构造方法迁移到分钟K线。滚动50根分钟K线，用最高价和最低价
+      对时间序列做OLS回归，QRS = R² × sign(beta)。
+      指标越高说明日内趋势性越强。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: R_squared × sign(beta), 其中 OLS: (high_1min + low_1min)/2 ~ time, 滚动窗口=50根分钟K线"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_o]
+    reference_metrics:
+      全市场_monthly_IC_mean: "-8.07%"
+      全市场_monthly_ICIR: "1.00"
+
+  - factor_id: cicc_mmt_ols_r2_2024
+    name_cn: 日内OLS回归R方
+    name_en: Intraday OLS R-squared
+    category: momentum_reversal
+    subcategory: qrs_momentum
+    description: >
+      mmt_qrs 的组成部分。滚动50根分钟K线的价格趋势OLS回归R²，
+      衡量日内价格趋势的拟合优度。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: R_squared from OLS: mid_price_1min ~ time, 滚动窗口=50"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_o, _m]
+
+  - factor_id: cicc_mmt_ols_beta_mean_2024
+    name_cn: 日内OLS回归Beta均值
+    name_en: Intraday OLS Beta Mean
+    category: momentum_reversal
+    subcategory: qrs_momentum
+    description: >
+      mmt_qrs 的组成部分。滚动50根分钟K线的价格趋势OLS回归斜率系数，
+      取日内均值。表征日内价格趋势的平均方向和强度。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: mean(beta_t) for t in day, 其中 beta_t from OLS: mid_price_1min ~ time, 滚动窗口=50"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_o]
+    reference_metrics:
+      全市场_monthly_IC_mean: "-7.34%"
+      全市场_monthly_ICIR: "1.09"
+      全市场_weekly_long_short_annual: "55%"
+      全市场_weekly_long_excess_annual: "23%"
+
+  # ===========================================================================
+  # 第二大类: 波动率因子 (Volatility)
+  # ===========================================================================
+
+  - factor_id: cicc_vol_return1min_2024
+    name_cn: 分钟收益波动率
+    name_en: 1-min Return Volatility
+    category: volatility
+    description: >
+      日内1分钟收益率的标准差，传统的已实现波动率。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: std(ret_1min[t]) for t in trading_day, 其中 ret_1min = close_1min(t)/close_1min(t-1) - 1"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_o]
+    reference_metrics:
+      全市场_weekly_long_short_annual: "41%"
+
+  - factor_id: cicc_vol_upVol_2024
+    name_cn: 上行波动率
+    name_en: Upside Volatility
+    category: volatility
+    description: >
+      仅取日内正收益率（ret_1min > 0）的标准差。
+      上行波动率越高，未来收益可能越低。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: std(ret_1min[t]) for t where ret_1min[t] > 0"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std]
+    reference_metrics:
+      全市场_monthly_ICIR: "1.35"
+      全市场_monthly_IC_mean: "-8.4%"
+
+  - factor_id: cicc_vol_downVol_2024
+    name_cn: 下行波动率
+    name_en: Downside Volatility
+    category: volatility
+    description: >
+      仅取日内负收益率（ret_1min < 0）的标准差。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: std(ret_1min[t]) for t where ret_1min[t] < 0"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std]
+
+  - factor_id: cicc_vol_range1min_2024
+    name_cn: 分钟振幅波动率
+    name_en: 1-min Range Volatility
+    category: volatility
+    description: >
+      日内1分钟K线振幅（high-low）/close的标准差。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: std((high_1min - low_1min) / close_1min) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std]
+
+  - factor_id: cicc_vol_volume1min_2024
+    name_cn: 分钟成交量波动率
+    name_en: 1-min Volume Volatility
+    category: volatility
+    description: >
+      日内1分钟成交量的变异系数（标准差/均值），衡量日内成交量分布的不均匀程度。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: std(vol_1min) / mean(vol_1min) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_o]
+    reference_metrics:
+      全市场_weekly_long_short_annual: "44%"
+
+  - factor_id: cicc_vol_downRatio_2024
+    name_cn: 日内下跌占比
+    name_en: Down-minute Ratio
+    category: volatility
+    description: >
+      日内下跌分钟数占总交易分钟数的比例。下跌占比越高，未来表现可能越差。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: count(ret_1min < 0) / count(ret_1min) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_o]
+    reference_metrics:
+      全市场_weekly_long_excess_annual: "14%"
+
+  - factor_id: cicc_vol_upRatio_2024
+    name_cn: 日内上涨占比
+    name_en: Up-minute Ratio
+    category: volatility
+    description: >
+      日内上涨分钟数占总交易分钟数的比例。与 vol_downRatio 互补。
+    direction: positive
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: count(ret_1min > 0) / count(ret_1min) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_o]
+
+  # ===========================================================================
+  # 第三大类: 高阶特征因子 (Higher-order Moments)
+  # ===========================================================================
+
+  - factor_id: cicc_shape_skew_2024
+    name_cn: 分钟收益偏度
+    name_en: Intraday Return Skewness
+    category: higher_order
+    subcategory: return_moments
+    description: >
+      日内分钟收益率的三阶标准矩（偏度）。正偏度反映价格右尾较重，
+      研究显示高正偏度的股票未来表现较差（彩票效应）。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: skewness(ret_1min) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_m, _std]
+    reference_metrics:
+      全市场_monthly_ICIR: "1.28"
+      全市场_weekly_long_short_annual: "29.2%"
+
+  - factor_id: cicc_shape_kurt_2024
+    name_cn: 分钟收益峰度
+    name_en: Intraday Return Kurtosis
+    category: higher_order
+    subcategory: return_moments
+    description: >
+      日内分钟收益率的四阶标准矩（峰度）。高峰度反映尾部风险较大。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: kurtosis(ret_1min) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std]
+    reference_metrics:
+      沪深300_monthly_ICIR: ">0.6"
+
+  - factor_id: cicc_shape_skratio_2024
+    name_cn: 分钟收益偏度比率
+    name_en: Intraday Skewness Ratio
+    category: higher_order
+    subcategory: return_moments
+    description: >
+      日内分钟收益率的标准化偏度指标，skewness / sqrt(kurtosis)。
+      综合考虑三阶和四阶矩的联合信息。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: skewness(ret_1min) / sqrt(kurtosis(ret_1min)) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_m]
+
+  - factor_id: cicc_shape_volskew_2024
+    name_cn: 分钟成交量占比偏度
+    name_en: Intraday Volume Share Skewness
+    category: higher_order
+    subcategory: volume_moments
+    description: >
+      日内每分钟成交量占全天总成交量比例序列的偏度。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: skewness(vol_1min / sum(vol_1min)) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_m, _std]
+
+  - factor_id: cicc_shape_volkurt_2024
+    name_cn: 分钟成交量占比峰度
+    name_en: Intraday Volume Share Kurtosis
+    category: higher_order
+    subcategory: volume_moments
+    description: >
+      日内每分钟成交量占全天总成交量比例序列的峰度。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: kurtosis(vol_1min / sum(vol_1min)) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std]
+
+  - factor_id: cicc_shape_volskratio_2024
+    name_cn: 分钟成交量占比偏度比率
+    name_en: Intraday Volume Share Skewness Ratio
+    category: higher_order
+    subcategory: volume_moments
+    description: >
+      日内成交量占比序列的标准化偏度指标。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: skewness(vol_share) / sqrt(kurtosis(vol_share)) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_m]
+
+  # ===========================================================================
+  # 第四大类: 流动性因子 (Liquidity)
+  # 细分: 价格弹性因子、集合竞价因子
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # 4.1 价格弹性因子 (Price Elasticity)
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_liq_amihud_1min_2024
+    name_cn: 1分钟Amihud非流动性
+    name_en: 1-min Amihud Illiquidity
+    category: liquidity
+    subcategory: price_elasticity
+    description: >
+      日内1分钟级别的Amihud非流动性指标。
+      衡量单位成交金额对价格的冲击程度，指标越高流动性越差。
+    direction: positive
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: mean(|ret_1min| / amount_1min) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_o]
+    reference_metrics:
+      全市场_monthly_ICIR: "1.02"
+      全市场_monthly_long_short_annual: "33%"
+      全市场_weekly_long_short_annual: "40%"
+    daily_approximation:
+      formula: "abs(daily_unadj.pct_chg / 100.0) / daily_unadj.amount"
+      source: daily_unadj
+      fields: [pct_chg, amount]
+      note: "日频近似，与报告中的1分钟高频版本有差异"
+
+  - factor_id: cicc_liq_spread_2024
+    name_cn: 买卖价差
+    name_en: Bid-Ask Spread
+    category: liquidity
+    subcategory: price_elasticity
+    description: >
+      基于Level2盘口10档数据计算的日内买卖价差。
+      spread = (best_ask - best_bid) / mid_price，取日内均值。
+    direction: positive
+    data_frequency: 3s_snapshot
+    formula: "NEEDS_DATA_DICT: mean((ask_price_1 - bid_price_1) / ((ask_price_1 + bid_price_1)/2)) over snapshots"
+    source: "NEEDS_DATA_DICT(需要3秒快照盘口数据表)"
+    fields: []
+    recommended_suffix: [_std]
+
+  - factor_id: cicc_liq_avgDepthCct_2024
+    name_cn: 加权盘口深度
+    name_en: Weighted Order Book Depth
+    category: liquidity
+    subcategory: price_elasticity
+    description: >
+      基于Level2的10档盘口数据，计算买卖双方深度加权均值，
+      反映当前挂单量的厚度。
+    direction: positive
+    data_frequency: 3s_snapshot
+    formula: "NEEDS_DATA_DICT: mean(sum(bid_vol_i + ask_vol_i for i=1..10) / 2) over snapshots"
+    source: "NEEDS_DATA_DICT(需要3秒快照盘口数据表)"
+    fields: []
+    recommended_suffix: [_o, _m]
+
+  # ---------------------------------------------------------------------------
+  # 4.2 集合竞价因子 (Auction / Intraday Volume Distribution)
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_liq_closevol_2024
+    name_cn: 收盘前成交量占比
+    name_en: Close Volume Ratio
+    category: liquidity
+    subcategory: auction
+    description: >
+      收盘前3分钟（14:57-15:00）成交量占全天总成交量的比例。
+      反映尾盘集合竞价时段的流动性集中度。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(vol_1min[14:57..15:00]) / sum(vol_1min[day])"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_z]
+    reference_metrics:
+      沪深300_weekly_ICIR: "0.21"
+      沪深300_weekly_long_excess_annual: "5.4%"
+
+  - factor_id: cicc_liq_openvol_2024
+    name_cn: 开盘后成交量占比
+    name_en: Open Volume Ratio
+    category: liquidity
+    subcategory: auction
+    description: >
+      开盘后3分钟（09:30-09:33）成交量占全天总成交量的比例。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(vol_1min[09:30..09:33]) / sum(vol_1min[day])"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_o, _m]
+
+  - factor_id: cicc_liq_closeprevol_2024
+    name_cn: 集合竞价前成交量占比
+    name_en: Pre-Auction Volume Ratio
+    category: liquidity
+    subcategory: auction
+    description: >
+      收盘集合竞价前一段时间的成交量占全天比例，反映尾盘活跃度。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(vol_1min[14:50..14:57]) / sum(vol_1min[day])"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_o, _m]
+
+  - factor_id: cicc_liq_firstCallR_2024
+    name_cn: 集合竞价收益率
+    name_en: Opening Auction Return
+    category: liquidity
+    subcategory: auction
+    description: >
+      开盘集合竞价收益率 = (开盘价 - 前收盘价) / 前收盘价。
+      此因子可使用日频数据近似计算。
+    direction: negative
+    data_frequency: daily
+    formula: "(daily_unadj.open - limit_price.pre_close) / limit_price.pre_close"
+    source:
+      - daily_unadj
+      - limit_price
+    fields: [open, pre_close]
+    recommended_suffix: [_o, _m]
+    reference_metrics:
+      全市场_weekly_ICIR: ">0.70"
+      全市场_weekly_long_short_annual: "27.5%~30.6%"
+
+  # ===========================================================================
+  # 第五大类: 量价相关性因子 (Price-Volume Correlation)
+  # 细分: 价量同步因子、领先滞后因子
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # 5.1 价量同步因子 (Contemporaneous)
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_corr_pv_2024
+    name_cn: 分钟价量相关系数
+    name_en: Price-Volume Correlation
+    category: price_volume_correlation
+    subcategory: contemporaneous
+    description: >
+      日内分钟收盘价与对应分钟成交量的Pearson相关系数。
+      正相关反映量价齐升的趋势行为。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: corr(close_1min, vol_1min) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std, _m]
+
+  - factor_id: cicc_corr_prv_2024
+    name_cn: 分钟收益率-成交量相关系数
+    name_en: Return-Volume Correlation
+    category: price_volume_correlation
+    subcategory: contemporaneous
+    description: >
+      日内分钟收益率与同期分钟成交量的Pearson相关系数。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: corr(ret_1min, vol_1min) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std]
+    reference_metrics:
+      全市场_monthly_IC_mean: "-5.65%"
+      全市场_monthly_ICIR: "1.09"
+
+  - factor_id: cicc_corr_prvr_2024
+    name_cn: 分钟收益率变化-成交量变化相关系数
+    name_en: Return Change - Volume Change Correlation
+    category: price_volume_correlation
+    subcategory: contemporaneous
+    description: >
+      日内分钟收益率变化量与成交量变化量的Pearson相关系数。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: corr(diff(ret_1min), diff(vol_1min)) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std]
+    reference_metrics:
+      全市场_monthly_IC_mean: "-2.88%"
+      全市场_monthly_ICIR: "0.64"
+
+  # ---------------------------------------------------------------------------
+  # 5.2 领先滞后因子 (Lead-Lag)
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_corr_pvl_2024
+    name_cn: 价格领先成交量相关系数
+    name_en: Price Leading Volume Correlation
+    category: price_volume_correlation
+    subcategory: lead_lag
+    description: >
+      日内分钟收盘价与领先一期（下一分钟）成交量的Pearson相关系数。
+      量能领先阶段往往是信息扩散的初期。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: corr(close_1min[t], vol_1min[t+1]) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std, _m]
+    reference_metrics:
+      全市场_monthly_ICIR: "1.09"
+      全市场_weekly_long_short_annual: ">46%"
+      全市场_monthly_long_excess: "8%"
+
+  - factor_id: cicc_corr_rvl_2024
+    name_cn: 收益率领先成交量相关系数
+    name_en: Return Leading Volume Correlation
+    category: price_volume_correlation
+    subcategory: lead_lag
+    description: >
+      日内分钟收益率与领先一期成交量的Pearson相关系数。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: corr(ret_1min[t], vol_1min[t+1]) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std, _m]
+
+  - factor_id: cicc_corr_vpl_2024
+    name_cn: 成交量领先价格相关系数
+    name_en: Volume Leading Price Correlation
+    category: price_volume_correlation
+    subcategory: lead_lag
+    description: >
+      日内分钟成交量与领先一期收盘价的Pearson相关系数。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: corr(vol_1min[t], close_1min[t+1]) over trading_day"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std, _m]
+
+  # ===========================================================================
+  # 第六大类: 筹码分布因子 (Chip Distribution)
+  # 细分: 筹码分布形状因子、筹码占比因子
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # 6.1 筹码分布形状因子 (Distribution Shape)
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_doc_std_2024
+    name_cn: 筹码分布标准差
+    name_en: Chip Distribution Std Dev
+    category: chip_distribution
+    subcategory: distribution_shape
+    description: >
+      以成交量为权重构建的持仓成本分布的标准差。
+      标准差越大说明筹码越分散。需要利用历史日内成交价和成交量构建筹码密度函数。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: weighted_std(price, weight=vol) over recent_N_days intraday data"
+    source: "NEEDS_DATA_DICT(需要分钟K线或逐笔成交表)"
+    fields: []
+    recommended_suffix: [_std, _o]
+
+  - factor_id: cicc_doc_skew_2024
+    name_cn: 筹码分布偏度
+    name_en: Chip Distribution Skewness
+    category: chip_distribution
+    subcategory: distribution_shape
+    description: >
+      成交量加权持仓成本分布的三阶标准矩（偏度）。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: weighted_skewness(price, weight=vol) over recent_N_days intraday data"
+    source: "NEEDS_DATA_DICT(需要分钟K线或逐笔成交表)"
+    fields: []
+    recommended_suffix: [_std]
+    reference_metrics:
+      全市场_monthly_IC_mean: "-5.86%"
+      全市场_monthly_ICIR: "0.71"
+
+  - factor_id: cicc_doc_kurt_2024
+    name_cn: 筹码分布峰度
+    name_en: Chip Distribution Kurtosis
+    category: chip_distribution
+    subcategory: distribution_shape
+    description: >
+      成交量加权持仓成本分布的四阶标准矩（峰度）。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: weighted_kurtosis(price, weight=vol) over recent_N_days intraday data"
+    source: "NEEDS_DATA_DICT(需要分钟K线或逐笔成交表)"
+    fields: []
+    recommended_suffix: [_std]
+
+  # ---------------------------------------------------------------------------
+  # 6.2 筹码占比因子 (Distribution Quantile / Ratio)
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_doc_vol_pdf80_2024
+    name_cn: 80分位筹码占比
+    name_en: 80th Percentile Chip Ratio
+    category: chip_distribution
+    subcategory: chip_ratio
+    description: >
+      成交量加权筹码分布中，当前价格高于80分位成本价的筹码占比。
+      表征多数持仓者的盈亏状态。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: CDF(current_close, chip_distribution) at 80th percentile"
+    source: "NEEDS_DATA_DICT(需要分钟K线或逐笔成交表)"
+    fields: []
+    recommended_suffix: [_std]
+
+  - factor_id: cicc_doc_vol_pdf90_2024
+    name_cn: 90分位筹码占比
+    name_en: 90th Percentile Chip Ratio
+    category: chip_distribution
+    subcategory: chip_ratio
+    description: >
+      成交量加权筹码分布中，当前价格所处的90分位盈亏水平。
+      效果最好的筹码分布因子。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: CDF(current_close, chip_distribution) at 90th percentile"
+    source: "NEEDS_DATA_DICT(需要分钟K线或逐笔成交表)"
+    fields: []
+    recommended_suffix: [_std]
+    reference_metrics:
+      全市场_monthly_ICIR: "1.52"
+      全市场_monthly_long_short_annual: ">28%"
+      沪深300_monthly_IC_mean: "-5.6%"
+      沪深300_monthly_ICIR: "0.83"
+
+  - factor_id: cicc_doc_vol_pdf95_2024
+    name_cn: 95分位筹码占比
+    name_en: 95th Percentile Chip Ratio
+    category: chip_distribution
+    subcategory: chip_ratio
+    description: >
+      成交量加权筹码分布中，当前价格所处的95分位盈亏水平。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: CDF(current_close, chip_distribution) at 95th percentile"
+    source: "NEEDS_DATA_DICT(需要分钟K线或逐笔成交表)"
+    fields: []
+    recommended_suffix: [_std]
+
+  - factor_id: cicc_doc_vol_pdf90bi_2024
+    name_cn: 90分位双向筹码占比
+    name_en: 90th Percentile Bidirectional Chip Ratio
+    category: chip_distribution
+    subcategory: chip_ratio
+    description: >
+      综合考虑90分位上方和下方的筹码占比差异。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: (CDF_above_90pct - CDF_below_90pct) of chip_distribution"
+    source: "NEEDS_DATA_DICT(需要分钟K线或逐笔成交表)"
+    fields: []
+    recommended_suffix: [_std]
+
+  - factor_id: cicc_doc_vol50_ratio_2024
+    name_cn: 50%收益率筹码头部占比
+    name_en: Top-50% Return Chip Ratio
+    category: chip_distribution
+    subcategory: chip_ratio
+    description: >
+      按收益率排序，前50%收益率对应的成交量筹码占全部筹码的比例。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(vol where ret_rank > 50pct) / sum(vol)"
+    source: "NEEDS_DATA_DICT(需要分钟K线或逐笔成交表)"
+    fields: []
+    recommended_suffix: [_o]
+
+  - factor_id: cicc_doc_vol10_ratio_2024
+    name_cn: 10%收益率筹码头部占比
+    name_en: Top-10% Return Chip Ratio
+    category: chip_distribution
+    subcategory: chip_ratio
+    description: >
+      按收益率排序，前10%收益率对应的成交量筹码占全部筹码的比例。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(vol where ret_rank > 90pct) / sum(vol)"
+    source: "NEEDS_DATA_DICT(需要分钟K线或逐笔成交表)"
+    fields: []
+    recommended_suffix: [_o]
+
+  - factor_id: cicc_doc_vol5_ratio_2024
+    name_cn: 5%收益率筹码头部占比
+    name_en: Top-5% Return Chip Ratio
+    category: chip_distribution
+    subcategory: chip_ratio
+    description: >
+      按收益率排序，前5%收益率对应的成交量筹码占全部筹码的比例。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(vol where ret_rank > 95pct) / sum(vol)"
+    source: "NEEDS_DATA_DICT(需要分钟K线或逐笔成交表)"
+    fields: []
+    recommended_suffix: [_o]
+
+  # ===========================================================================
+  # 第七大类: 拥挤度因子 (Crowding / Institutional Activity)
+  # 细分: 常规拥挤度、傅里叶变换拥挤度
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # 7.1 常规拥挤度因子
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_crowd_origin_v50_2024
+    name_cn: 原始成交量中位数拥挤度
+    name_en: Raw Volume Median Crowding
+    category: crowding
+    subcategory: raw_crowding
+    description: >
+      基于日内成交量序列的中位数以上成交占比，衡量是否存在集中交易行为。
+      指标越高表示机构拆单交易越拥挤。
+    direction: negative
+    data_frequency: 3s_snapshot
+    formula: "NEEDS_DATA_DICT: sum(vol_tick where vol_tick > median(vol_tick)) / sum(vol_tick)"
+    source: "NEEDS_DATA_DICT(需要3秒快照或逐笔成交表)"
+    fields: []
+    recommended_suffix: [_std]
+    reference_metrics:
+      全市场_monthly_ICIR: "1.18"
+      全市场_monthly_long_short_annual: ">26%"
+
+  # ---------------------------------------------------------------------------
+  # 7.2 傅里叶变换拥挤度因子 (FFT Crowding)
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_crowd_fftv50m5_2024
+    name_cn: FFT拥挤度(50分位5分钟)
+    name_en: FFT Crowding V50 5min
+    category: crowding
+    subcategory: fft_crowding
+    description: >
+      对日内成交量序列做傅里叶变换(FFT)，取50分位以上的频率分量振幅占比，
+      采样频率为5分钟。机构拆单的周期性被FFT捕捉为显著的频率成分。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(|FFT(vol_5min)|[top_50pct]) / sum(|FFT(vol_5min)|)"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std]
+
+  - factor_id: cicc_crowd_fftv50m10_2024
+    name_cn: FFT拥挤度(50分位10分钟)
+    name_en: FFT Crowding V50 10min
+    category: crowding
+    subcategory: fft_crowding
+    description: >
+      傅里叶变换拥挤度，50分位振幅占比，采样频率为10分钟。
+      在沪深300内相比其他拥挤度因子表现更好。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(|FFT(vol_10min)|[top_50pct]) / sum(|FFT(vol_10min)|)"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std]
+    reference_metrics:
+      全市场_monthly_ICIR: "1.30"
+      全市场_monthly_long_short_annual: "25.5%"
+      沪深300_monthly_IC_mean: "-3.51%"
+      沪深300_monthly_ICIR: "0.54"
+
+  - factor_id: cicc_crowd_fftv20_3s_w0_2024
+    name_cn: FFT拥挤度(20分位3秒不补零)
+    name_en: FFT Crowding V20 3s No-Padding
+    category: crowding
+    subcategory: fft_crowding
+    description: >
+      使用30秒快照成交量序列做FFT，取前20分位频率分量振幅占比，
+      采样3秒，不做零填充(no zero-padding)。
+    direction: negative
+    data_frequency: 3s_snapshot
+    formula: "NEEDS_DATA_DICT: sum(|FFT(vol_3s)|[top_20pct]) / sum(|FFT(vol_3s)|), no zero-padding"
+    source: "NEEDS_DATA_DICT(需要3秒快照数据表)"
+    fields: []
+    recommended_suffix: [_std]
+    reference_metrics:
+      全市场_monthly_ICIR: "1.37"
+      全市场_weekly_ICIR: "1.38"
+      全市场_weekly_sharpe: ">5.0"
+
+  - factor_id: cicc_crowd_fftv20_low_2024
+    name_cn: FFT拥挤度低频分量
+    name_en: FFT Crowding V20 Low Frequency
+    category: crowding
+    subcategory: fft_crowding
+    description: >
+      傅里叶变换后提取低频分量（长周期）的振幅占比。
+    direction: negative
+    data_frequency: 3s_snapshot
+    formula: "NEEDS_DATA_DICT: sum(|FFT(vol)|[low_freq_top_20pct]) / sum(|FFT(vol)|)"
+    source: "NEEDS_DATA_DICT(需要3秒快照数据表)"
+    fields: []
+    recommended_suffix: [_o]
+
+  - factor_id: cicc_crowd_fftv20_high_2024
+    name_cn: FFT拥挤度高频分量
+    name_en: FFT Crowding V20 High Frequency
+    category: crowding
+    subcategory: fft_crowding
+    description: >
+      傅里叶变换后提取高频分量（短周期）的振幅占比。
+    direction: negative
+    data_frequency: 3s_snapshot
+    formula: "NEEDS_DATA_DICT: sum(|FFT(vol)|[high_freq_top_20pct]) / sum(|FFT(vol)|)"
+    source: "NEEDS_DATA_DICT(需要3秒快照数据表)"
+    fields: []
+    recommended_suffix: [_o]
+
+  # ===========================================================================
+  # 第八大类: 资金成交因子 (Capital Flow / Trade Behavior)
+  # 细分: 交易单量资金流向、开盘/尾盘资金流向、收益率成交占比
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # 8.1 交易单量资金流向因子
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_trade_CBuyRatio_2024
+    name_cn: 主动买入单占比
+    name_en: Active Buy Ratio
+    category: capital_flow
+    subcategory: order_flow
+    description: >
+      日内主动买入成交量占总成交量的比例。
+      基于逐笔成交数据中买卖方向标识判断。
+    direction: negative
+    data_frequency: tick
+    formula: "NEEDS_DATA_DICT: sum(vol where side='Buy') / sum(vol) from tick data"
+    source: "NEEDS_DATA_DICT(需要逐笔成交表)"
+    fields: []
+    recommended_suffix: [_z]
+
+  - factor_id: cicc_trade_CSellRatio_2024
+    name_cn: 主动卖出单占比
+    name_en: Active Sell Ratio
+    category: capital_flow
+    subcategory: order_flow
+    description: >
+      日内主动卖出成交量占总成交量的比例。
+    direction: positive
+    data_frequency: tick
+    formula: "NEEDS_DATA_DICT: sum(vol where side='Sell') / sum(vol) from tick data"
+    source: "NEEDS_DATA_DICT(需要逐笔成交表)"
+    fields: []
+    recommended_suffix: [_z]
+    reference_metrics:
+      全市场_monthly_ICIR: "0.40"
+
+  - factor_id: cicc_trade_Cratio_2024
+    name_cn: 主动买卖比
+    name_en: Active Buy-Sell Ratio
+    category: capital_flow
+    subcategory: order_flow
+    description: >
+      日内主动买入量与主动卖出量的比值。
+    direction: negative
+    data_frequency: tick
+    formula: "NEEDS_DATA_DICT: sum(vol where side='Buy') / sum(vol where side='Sell') from tick data"
+    source: "NEEDS_DATA_DICT(需要逐笔成交表)"
+    fields: []
+    recommended_suffix: [_z, _o]
+
+  # ---------------------------------------------------------------------------
+  # 8.2 开盘/尾盘资金流向因子
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_trade_headRatio_2024
+    name_cn: 开盘成交占比
+    name_en: Head Trading Ratio
+    category: capital_flow
+    subcategory: session_flow
+    description: >
+      上午10:00前的成交量占全天总成交量的比例。
+      开盘时段资金流入的集中度。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(vol_1min[09:30..10:00]) / sum(vol_1min[day])"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std]
+    reference_metrics:
+      全市场_weekly_ICIR: "0.92"
+      全市场_weekly_long_short_annual: "24.9%"
+      全市场_monthly_ICIR: "1.07"
+
+  - factor_id: cicc_trade_tailRatio_2024
+    name_cn: 尾盘成交占比
+    name_en: Tail Trading Ratio
+    category: capital_flow
+    subcategory: session_flow
+    description: >
+      下午14:30后的成交量占全天总成交量的比例。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(vol_1min[14:30..15:00]) / sum(vol_1min[day])"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_std]
+
+  - factor_id: cicc_trade_netBuyRatio_2024
+    name_cn: 净买入占比
+    name_en: Net Buy Ratio
+    category: capital_flow
+    subcategory: session_flow
+    description: >
+      开盘/尾盘时段净买入金额占总成交金额的比例。
+    direction: positive
+    data_frequency: tick
+    formula: "NEEDS_DATA_DICT: (sum(buy_amount) - sum(sell_amount)) / sum(total_amount) for session period"
+    source: "NEEDS_DATA_DICT(需要逐笔成交表)"
+    fields: []
+    recommended_suffix: [_o, _m]
+
+  - factor_id: cicc_trade_bidAskRatio_2024
+    name_cn: 买卖盘口比
+    name_en: Bid-Ask Order Ratio
+    category: capital_flow
+    subcategory: session_flow
+    description: >
+      日内买卖盘口委托量的比值，反映多空力量对比。
+    direction: positive
+    data_frequency: 3s_snapshot
+    formula: "NEEDS_DATA_DICT: mean(sum(bid_vol_i) / sum(ask_vol_i) for i=1..10) over snapshots"
+    source: "NEEDS_DATA_DICT(需要3秒快照盘口数据表)"
+    fields: []
+    recommended_suffix: [_o, _m]
+
+  # ---------------------------------------------------------------------------
+  # 8.3 收益率成交占比因子
+  # ---------------------------------------------------------------------------
+
+  - factor_id: cicc_trade_top20retRatio_2024
+    name_cn: 高收益量能占比(前20%)
+    name_en: Top-20% Return Volume Ratio
+    category: capital_flow
+    subcategory: return_volume_ratio
+    description: >
+      日内收益率最高的20%分钟K线所对应的成交量占全天成交量的比例。
+      反映高涨幅时段的成交集中度。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(vol_1min where ret_1min in top_20pct) / sum(vol_1min)"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_m]
+    reference_metrics:
+      全市场_monthly_ICIR: "0.90"
+      全市场_monthly_IC_mean: "-5.23%"
+      全市场_monthly_long_short_annual: "14%"
+
+  - factor_id: cicc_trade_top50retRatio_2024
+    name_cn: 高收益量能占比(前50%)
+    name_en: Top-50% Return Volume Ratio
+    category: capital_flow
+    subcategory: return_volume_ratio
+    description: >
+      日内收益率最高的50%分钟K线所对应的成交量占全天成交量的比例。
+    direction: negative
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(vol_1min where ret_1min in top_50pct) / sum(vol_1min)"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_m]
+
+  - factor_id: cicc_trade_topNeg20retRatio_2024
+    name_cn: 低收益量能占比(后20%)
+    name_en: Bottom-20% Return Volume Ratio
+    category: capital_flow
+    subcategory: return_volume_ratio
+    description: >
+      日内收益率最低的20%分钟K线所对应的成交量占全天成交量的比例。
+      下跌时的成交集中度。
+    direction: positive
+    data_frequency: 1min_kline
+    formula: "NEEDS_DATA_DICT: sum(vol_1min where ret_1min in bottom_20pct) / sum(vol_1min)"
+    source: "NEEDS_DATA_DICT(需要分钟K线表)"
+    fields: []
+    recommended_suffix: [_o]
+
+  # ===========================================================================
+  # 第九大类: 高频复合因子 (Composite Factors)
+  # 同类等权合成，方向已调整为与下期收益率正相关
+  # ===========================================================================
+
+  - factor_id: cicc_syn_mmt_2024
+    name_cn: 动量反转复合因子
+    name_en: Composite Momentum Factor
+    category: composite
+    description: >
+      选取动量反转类中表现较好的因子，等权合成后方向调整为正。
+    direction: positive
+    combination:
+      method: equal_weight
+      direction_adjusted: true
+    components:
+      - cicc_mmt_ols_beta_mean_2024
+      - cicc_mmt_top20VolumeRet_2024
+      - cicc_mmt_last30_2024
+      - cicc_mmt_pm_2024
+      - cicc_mmt_qrs_2024
+    formula: "equal_weight([-mmt_ols_beta_mean_o, -mmt_top20VolumeRet_std, -mmt_last30_std, -mmt_pm_m, -mmt_qrs_o])"
+    source: "同类子因子等权合成"
+    fields: []
+    reference_metrics:
+      全市场_weekly_ICIR: "1.10"
+      全市场_weekly_long_short_annual: "64.2%"
+
+  - factor_id: cicc_syn_vol_2024
+    name_cn: 波动率复合因子
+    name_en: Composite Volatility Factor
+    category: composite
+    description: >
+      选取波动率类中表现较好的因子，等权合成。
+    direction: positive
+    combination:
+      method: equal_weight
+      direction_adjusted: true
+    components:
+      - cicc_vol_upVol_2024
+      - cicc_vol_return1min_2024
+      - cicc_vol_volume1min_2024
+      - cicc_vol_downRatio_2024
+    formula: "equal_weight([-vol_upVol_std, -vol_return1min_o, -vol_volume1min_o, -vol_downRatio_o])"
+    source: "同类子因子等权合成"
+    fields: []
+
+  - factor_id: cicc_syn_shape_2024
+    name_cn: 高阶特征复合因子
+    name_en: Composite Higher-order Factor
+    category: composite
+    description: >
+      选取高阶特征类中表现较好的因子，等权合成。
+    direction: positive
+    combination:
+      method: equal_weight
+      direction_adjusted: true
+    components:
+      - cicc_shape_skew_2024
+      - cicc_shape_skratio_2024
+      - cicc_shape_kurt_2024
+    formula: "equal_weight([-shape_skew_m, -shape_skratio_m, -shape_kurt_std])"
+    source: "同类子因子等权合成"
+    fields: []
+
+  - factor_id: cicc_syn_liq_2024
+    name_cn: 流动性复合因子
+    name_en: Composite Liquidity Factor
+    category: composite
+    description: >
+      选取流动性类中表现较好的因子，等权合成。
+    direction: positive
+    combination:
+      method: equal_weight
+      direction_adjusted: true
+    components:
+      - cicc_liq_amihud_1min_2024
+      - cicc_liq_spread_2024
+      - cicc_liq_firstCallR_2024
+    formula: "equal_weight([liq_amihud_1min_o, liq_spread_std, -liq_firstCallR_o])"
+    source: "同类子因子等权合成"
+    fields: []
+
+  - factor_id: cicc_syn_corr_2024
+    name_cn: 量价相关复合因子
+    name_en: Composite Price-Volume Correlation Factor
+    category: composite
+    description: >
+      选取量价相关性类中表现较好的因子，等权合成。
+    direction: positive
+    combination:
+      method: equal_weight
+      direction_adjusted: true
+    components:
+      - cicc_corr_pvl_2024
+      - cicc_corr_pv_2024
+      - cicc_corr_prv_2024
+    formula: "equal_weight([-corr_pvl_std, -corr_pv_std, -corr_prv_std])"
+    source: "同类子因子等权合成"
+    fields: []
+    reference_metrics:
+      全市场_monthly_ICIR: "1.23"
+
+  - factor_id: cicc_syn_doc_2024
+    name_cn: 筹码分布复合因子
+    name_en: Composite Chip Distribution Factor
+    category: composite
+    description: >
+      选取筹码分布类中表现较好的因子，等权合成。
+    direction: positive
+    combination:
+      method: equal_weight
+      direction_adjusted: true
+    components:
+      - cicc_doc_vol_pdf90_2024
+      - cicc_doc_vol_pdf95_2024
+      - cicc_doc_vol_pdf90bi_2024
+      - cicc_doc_vol10_ratio_2024
+    formula: "equal_weight([-doc_vol_pdf90_std, -doc_vol_pdf95_std, -doc_vol_pdf90bi_std, -doc_vol10_ratio_o])"
+    source: "同类子因子等权合成"
+    fields: []
+
+  - factor_id: cicc_syn_crowd_2024
+    name_cn: 拥挤度复合因子
+    name_en: Composite Crowding Factor
+    category: composite
+    description: >
+      选取拥挤度类中表现较好的因子，等权合成。
+    direction: positive
+    combination:
+      method: equal_weight
+      direction_adjusted: true
+    components:
+      - cicc_crowd_fftv20_3s_w0_2024
+      - cicc_crowd_fftv50m10_2024
+      - cicc_crowd_origin_v50_2024
+    formula: "equal_weight([-crowd_fftv20_3s_w0_std, -crowd_fftv50m10_std, -crowd_origin_v50_std])"
+    source: "同类子因子等权合成"
+    fields: []
+    reference_metrics:
+      全市场_weekly_long_short_annual: "69.9%"
+      全市场_weekly_long_excess_annual: "11.1%"
+
+  - factor_id: cicc_syn_trade_2024
+    name_cn: 资金成交复合因子
+    name_en: Composite Capital Flow Factor
+    category: composite
+    description: >
+      选取资金成交类中表现较好的因子，等权合成。
+    direction: positive
+    combination:
+      method: equal_weight
+      direction_adjusted: true
+    components:
+      - cicc_trade_headRatio_2024
+      - cicc_trade_top20retRatio_2024
+      - cicc_trade_topNeg20retRatio_2024
+    formula: "equal_weight([-trade_headRatio_std, -trade_top20retRatio_m, trade_topNeg20retRatio_o])"
+    source: "同类子因子等权合成"
+    fields: []
