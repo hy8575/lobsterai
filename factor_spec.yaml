@@ -1,0 +1,1027 @@
+# ================================================================
+# QQC 综合质量因子 — factor_spec.yaml
+# 研报: 量化多因子系列（1）：QQC综合质量因子与指数增强应用
+# 发行方: 中金公司 (CICC)  |  发布日期: 2021-01-14
+# 作者: 刘均伟, 王汉锋
+# ================================================================
+
+meta:
+  report_title: "量化多因子系列（1）：QQC综合质量因子与指数增强应用"
+  publisher: CICC
+  publisher_cn: 中国国际金融股份有限公司
+  authors:
+    - 刘均伟
+    - 王汉锋
+  publish_date: "2021-01-14"
+
+data:
+  database: a_share.db
+  align_by: ann_date
+  sample_in: "2009-01-01 ~ 2018-12-31"
+  sample_out: "2019-01-01 ~ 2020-12-31"
+
+# ==================== 顶层复合因子 ====================
+composite:
+  cicc_qqc_2021:
+    name_cn: QQC综合质量因子
+    name_en: Quantified Quality Composite
+    description: "六大类质量因子等权加权合成"
+    combination:
+      method: equal_weight
+    sub_categories:
+      - cicc_profitability_2021
+      - cicc_growth_2021
+      - cicc_operation_2021
+      - cicc_accrual_2021
+      - cicc_safety_2021
+      - cicc_governance_2021
+
+# ==================== 大类因子 ====================
+categories:
+
+  cicc_profitability_2021:
+    name_cn: 盈利能力
+    name_en: Profitability
+    combination:
+      method: equal_weight
+    note: "CFOA满足筛选条件(IC>2%,IR>0.3,tstat>3); ROE/ROIC因使用广泛被额外选入"
+    selected_sub_factors:
+      - cicc_cfoa_2021
+      - cicc_roe_2021
+      - cicc_roic_2021
+
+  cicc_growth_2021:
+    name_cn: 成长能力
+    name_en: Growth
+    combination:
+      method: equal_weight
+    selection_criteria: "IC > 2% AND IR > 0.3 AND tstat > 3"
+    note: "所有增速类因子均需与分母值做横截面回归取残差，消除基数效应"
+    selected_sub_factors:
+      - cicc_op_sd_2021
+      - cicc_np_acc_2021
+      - cicc_op_q_yoy_2021
+      - cicc_np_sd_2021
+      - cicc_qpt_2021
+      - cicc_np_q_yoy_2021
+      - cicc_op_yoy_2021
+      - cicc_np_yoy_2021
+      - cicc_or_yoy_2021
+
+  cicc_operation_2021:
+    name_cn: 营运效率
+    name_en: Operation
+    combination:
+      method: equal_weight
+    note: "ATD满足筛选条件; OCFA为创新因子且与常用因子相关性低，额外选入"
+    selected_sub_factors:
+      - cicc_atd_2021
+      - cicc_ocfa_2021
+
+  cicc_accrual_2021:
+    name_cn: 盈余质量
+    name_en: Accrual
+    combination:
+      method: equal_weight
+    note: "该大类整体预测能力较弱，选取负向IC最强的APR作为代表"
+    selected_sub_factors:
+      - cicc_apr_2021
+
+  cicc_safety_2021:
+    name_cn: 安全性
+    name_en: Safety
+    combination:
+      method: equal_weight
+    note: "该大类整体预测能力不高，选取IC_IR最优的CCR作为代表"
+    selected_sub_factors:
+      - cicc_ccr_2021
+
+  cicc_governance_2021:
+    name_cn: 公司治理
+    name_en: Governance
+    combination:
+      method: equal_weight
+    note: "5大指标按方向(weight_in_governance)调整后等权相加"
+    selected_sub_factors:
+      - cicc_mc_percent_2021
+      - cicc_mana_income_2021
+      - cicc_mana_share_num_2021
+      - cicc_deal_method_2021
+      - cicc_stock_incentive_2021
+
+# ==================== 全部子因子定义 ====================
+factors:
+
+  # ============================================================
+  #  盈利能力 (Profitability)  —  9 个子因子
+  # ============================================================
+
+  cicc_cfoa_2021:
+    category: profitability
+    name_cn: 经营现金流/总资产
+    abbreviation: CFOA
+    direction: 1
+    selected: true
+    formula: "n_cashflow_act / total_assets"
+    source:
+      - fin_cashflow
+      - fin_balance
+    fields:
+      - fin_cashflow.n_cashflow_act
+      - fin_balance.total_assets
+
+  cicc_roe_2021:
+    category: profitability
+    name_cn: 净资产收益率
+    abbreviation: ROE
+    direction: 1
+    selected: true
+    formula: "roe"
+    alt_formula: "n_income_attr_p / total_hldr_eqy_exc_min_int"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.roe
+
+  cicc_roic_2021:
+    category: profitability
+    name_cn: 投入资本收益率
+    abbreviation: ROIC
+    direction: 1
+    selected: true
+    formula: "roic"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.roic
+
+  cicc_gpm_2021:
+    category: profitability
+    name_cn: 毛利率
+    abbreviation: GPM
+    direction: 1
+    selected: false
+    formula: "grossprofit_margin"
+    alt_formula: "(revenue - oper_cost) / revenue"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.grossprofit_margin
+
+  cicc_npm_2021:
+    category: profitability
+    name_cn: 净利率
+    abbreviation: NPM
+    direction: 1
+    selected: false
+    formula: "netprofit_margin"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.netprofit_margin
+
+  cicc_roa_2021:
+    category: profitability
+    name_cn: 总资产收益率
+    abbreviation: ROA
+    direction: 1
+    selected: false
+    formula: "roa"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.roa
+
+  cicc_oitoebt_2021:
+    category: profitability
+    name_cn: 经营收益占比
+    abbreviation: OItoEBT
+    direction: 1
+    selected: false
+    formula: "opincome_of_ebt"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.opincome_of_ebt
+
+  cicc_opm_2021:
+    category: profitability
+    name_cn: 营业利润率
+    abbreviation: OPM
+    direction: 1
+    selected: false
+    formula: "operate_profit / total_revenue"
+    alt_formula: "op_of_gr"
+    source:
+      - fin_income
+    fields:
+      - fin_income.operate_profit
+      - fin_income.total_revenue
+
+  cicc_gpoa_2021:
+    category: profitability
+    name_cn: 总资产毛利率
+    abbreviation: GPOA
+    direction: 1
+    selected: false
+    formula: "(revenue - oper_cost) / total_assets"
+    source:
+      - fin_income
+      - fin_balance
+    fields:
+      - fin_income.revenue
+      - fin_income.oper_cost
+      - fin_balance.total_assets
+
+  # ============================================================
+  #  成长能力 (Growth)  —  22 个子因子 (9 selected)
+  # ============================================================
+
+  # ---- Growth: 已选入 ----
+
+  cicc_op_sd_2021:
+    category: growth
+    name_cn: 营业利润稳健加速度
+    abbreviation: OP_SD
+    direction: 1
+    selected: true
+    formula: "OP_Stable(t) - OP_Stable(t-1)"
+    depends_on: cicc_op_stable_2021
+    note: >
+      OP_Stable = mean(past_8q_OP_yoy) / std(past_8q_OP_yoy);
+      单季度营业利润 = operate_profit 当期累计 - operate_profit 上期累计;
+      单季度同比 = (OP_q(t) - OP_q(t-4)) / |OP_q(t-4)|
+    source:
+      - fin_income
+    fields:
+      - fin_income.operate_profit
+      - fin_income.end_date
+
+  cicc_np_acc_2021:
+    category: growth
+    name_cn: 净利润加速度
+    abbreviation: NP_Acc
+    direction: 1
+    selected: true
+    formula: "OLS(single_quarter_NP = alpha * t^2 + beta * t + c, N=8).alpha"
+    note: >
+      取最近 8 个单季度净利润对季度序号做二次回归,
+      二次项系数 alpha 为加速度代理变量;
+      单季度净利润由 n_income_attr_p 累计值差分得到
+    source:
+      - fin_income
+    fields:
+      - fin_income.n_income_attr_p
+      - fin_income.end_date
+
+  cicc_op_q_yoy_2021:
+    category: growth
+    name_cn: 营业利润增速（单季度同比）
+    abbreviation: OP_Q_YOY
+    direction: 1
+    selected: true
+    formula: "cross_sectional_residual(q_op_yoy, abs(base_quarter_operate_profit))"
+    note: "先取 q_op_yoy，再横截面回归取残差消除基数效应"
+    source:
+      - fin_indicator
+      - fin_income
+    fields:
+      - fin_indicator.q_op_yoy
+      - fin_income.operate_profit
+
+  cicc_np_sd_2021:
+    category: growth
+    name_cn: 净利润稳健加速度
+    abbreviation: NP_SD
+    direction: 1
+    selected: true
+    formula: "NP_Stable(t) - NP_Stable(t-1)"
+    depends_on: cicc_np_stable_2021
+    note: >
+      NP_Stable = mean(past_8q_NP_yoy) / std(past_8q_NP_yoy);
+      稳健增速指标的一阶差分
+    source:
+      - fin_income
+    fields:
+      - fin_income.n_income_attr_p
+      - fin_income.end_date
+
+  cicc_qpt_2021:
+    category: growth
+    name_cn: 业绩趋势因子
+    abbreviation: QPT
+    direction: 1
+    selected: true
+    formula: "layered_score(step1_growth_rank + step2_acceleration_zscore)"
+    note: |
+      分层打分法:
+      Step1: 按净利润同比增速将全市场股票分3组 (高=3, 中=2, 低=1)
+      Step2: 每组内按 NP_Acc 做标准化打分
+      Final: step1_score + step2_score
+      可用业绩预告(净利润下限)降低滞后性
+      业绩数据优先级: 定期报告 > 业绩快报 > 业绩预告
+    source:
+      - fin_income
+    fields:
+      - fin_income.n_income_attr_p
+      - fin_income.end_date
+
+  cicc_np_q_yoy_2021:
+    category: growth
+    name_cn: 净利润增速（单季度同比）
+    abbreviation: NP_Q_YOY
+    direction: 1
+    selected: true
+    formula: "cross_sectional_residual(q_netprofit_yoy, abs(base_quarter_n_income_attr_p))"
+    note: "先取 q_netprofit_yoy，再横截面回归取残差消除基数效应"
+    source:
+      - fin_indicator
+      - fin_income
+    fields:
+      - fin_indicator.q_netprofit_yoy
+      - fin_income.n_income_attr_p
+
+  cicc_op_yoy_2021:
+    category: growth
+    name_cn: 营业利润增速（TTM同比）
+    abbreviation: OP_YOY
+    direction: 1
+    selected: true
+    formula: "cross_sectional_residual(op_yoy, abs(base_period_operate_profit))"
+    note: "先取 op_yoy，再横截面回归取残差消除基数效应"
+    source:
+      - fin_indicator
+      - fin_income
+    fields:
+      - fin_indicator.op_yoy
+      - fin_income.operate_profit
+
+  cicc_np_yoy_2021:
+    category: growth
+    name_cn: 净利润增速（TTM同比）
+    abbreviation: NP_YOY
+    direction: 1
+    selected: true
+    formula: "cross_sectional_residual(netprofit_yoy, abs(base_period_n_income_attr_p))"
+    note: "先取 netprofit_yoy，再横截面回归取残差消除基数效应"
+    source:
+      - fin_indicator
+      - fin_income
+    fields:
+      - fin_indicator.netprofit_yoy
+      - fin_income.n_income_attr_p
+
+  cicc_or_yoy_2021:
+    category: growth
+    name_cn: 营业收入增速（TTM同比）
+    abbreviation: OR_YOY
+    direction: 1
+    selected: true
+    formula: "cross_sectional_residual(or_yoy, abs(base_period_revenue))"
+    note: "先取 or_yoy，再横截面回归取残差消除基数效应"
+    source:
+      - fin_indicator
+      - fin_income
+    fields:
+      - fin_indicator.or_yoy
+      - fin_income.revenue
+
+  # ---- Growth: 未选入 ----
+
+  cicc_cfoad_2021:
+    category: growth
+    name_cn: 经营现金流/总资产变动
+    abbreviation: CFOAD
+    direction: 1
+    selected: false
+    formula: "(n_cashflow_act / total_assets)(t) - (n_cashflow_act / total_assets)(t-1)"
+    source:
+      - fin_cashflow
+      - fin_balance
+    fields:
+      - fin_cashflow.n_cashflow_act
+      - fin_balance.total_assets
+
+  cicc_gpmd_2021:
+    category: growth
+    name_cn: 毛利率变动
+    abbreviation: GPMD
+    direction: 1
+    selected: false
+    formula: "grossprofit_margin(t) - grossprofit_margin(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.grossprofit_margin
+
+  cicc_gpoad_2021:
+    category: growth
+    name_cn: 总资产毛利率变动
+    abbreviation: GPOAD
+    direction: 1
+    selected: false
+    formula: "((revenue - oper_cost) / total_assets)(t) - ((revenue - oper_cost) / total_assets)(t-1)"
+    source:
+      - fin_income
+      - fin_balance
+    fields:
+      - fin_income.revenue
+      - fin_income.oper_cost
+      - fin_balance.total_assets
+
+  cicc_np_qoq_2021:
+    category: growth
+    name_cn: 净利润增速（单季度环比）
+    abbreviation: NP_QOQ
+    direction: 1
+    selected: false
+    formula: "cross_sectional_residual(q_netprofit_qoq, abs(base_quarter_n_income_attr_p))"
+    source:
+      - fin_indicator
+      - fin_income
+    fields:
+      - fin_indicator.q_netprofit_qoq
+      - fin_income.n_income_attr_p
+
+  cicc_np_stable_2021:
+    category: growth
+    name_cn: 净利润稳健增速
+    abbreviation: NP_Stable
+    direction: 1
+    selected: false
+    formula: "mean(past_8q_single_quarter_NP_yoy) / std(past_8q_single_quarter_NP_yoy)"
+    note: "过去8个单季度净利润同比增速的均值除以标准差; N=8 (约2年)"
+    source:
+      - fin_income
+    fields:
+      - fin_income.n_income_attr_p
+      - fin_income.end_date
+
+  cicc_npmd_2021:
+    category: growth
+    name_cn: 净利率变动
+    abbreviation: NPMD
+    direction: 1
+    selected: false
+    formula: "netprofit_margin(t) - netprofit_margin(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.netprofit_margin
+
+  cicc_op_qoq_2021:
+    category: growth
+    name_cn: 营业利润增速（单季度环比）
+    abbreviation: OP_QOQ
+    direction: 1
+    selected: false
+    formula: "cross_sectional_residual(q_op_qoq, abs(base_quarter_operate_profit))"
+    source:
+      - fin_indicator
+      - fin_income
+    fields:
+      - fin_indicator.q_op_qoq
+      - fin_income.operate_profit
+
+  cicc_op_stable_2021:
+    category: growth
+    name_cn: 营业利润稳健增速
+    abbreviation: OP_Stable
+    direction: 1
+    selected: false
+    formula: "mean(past_8q_single_quarter_OP_yoy) / std(past_8q_single_quarter_OP_yoy)"
+    note: "过去8个单季度营业利润同比增速的均值除以标准差; N=8"
+    source:
+      - fin_income
+    fields:
+      - fin_income.operate_profit
+      - fin_income.end_date
+
+  cicc_or_sd_2021:
+    category: growth
+    name_cn: 营业收入稳健加速度
+    abbreviation: OR_SD
+    direction: 1
+    selected: false
+    formula: "OR_Stable(t) - OR_Stable(t-1)"
+    depends_on: cicc_or_stable_2021
+    source:
+      - fin_income
+    fields:
+      - fin_income.revenue
+      - fin_income.end_date
+
+  cicc_or_stable_2021:
+    category: growth
+    name_cn: 营业收入稳健增速
+    abbreviation: OR_Stable
+    direction: 1
+    selected: false
+    formula: "mean(past_8q_single_quarter_OR_yoy) / std(past_8q_single_quarter_OR_yoy)"
+    note: "过去8个单季度营业收入同比增速的均值除以标准差; N=8"
+    source:
+      - fin_income
+    fields:
+      - fin_income.revenue
+      - fin_income.end_date
+
+  cicc_road_2021:
+    category: growth
+    name_cn: ROA变动
+    abbreviation: ROAD
+    direction: 1
+    selected: false
+    formula: "roa(t) - roa(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.roa
+
+  cicc_roed_2021:
+    category: growth
+    name_cn: ROE变动
+    abbreviation: ROED
+    direction: 1
+    selected: false
+    formula: "roe(t) - roe(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.roe
+
+  cicc_roicd_2021:
+    category: growth
+    name_cn: 投入资本收益率变动
+    abbreviation: ROICD
+    direction: 1
+    selected: false
+    formula: "roic(t) - roic(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.roic
+
+  # ============================================================
+  #  营运效率 (Operation)  —  7 个子因子 (2 selected)
+  # ============================================================
+
+  cicc_atd_2021:
+    category: operation
+    name_cn: 总资产周转率变动
+    abbreviation: ATD
+    direction: 1
+    selected: true
+    formula: "assets_turn(t) - assets_turn(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.assets_turn
+
+  cicc_ocfa_2021:
+    category: operation
+    name_cn: 产能利用率提升
+    abbreviation: OCFA
+    direction: 1
+    selected: true
+    formula: "OLS_residual(oper_cost ~ fixed_assets, rolling_by_stock)"
+    note: >
+      每只股票的营业成本对固定资产做时序滚动回归,
+      取最近一期残差 ε 作为产能利用率提升的代理变量;
+      Total_Operation_Cost = β0 + β1 * Fixed_Assets + ε
+    source:
+      - fin_income
+      - fin_balance
+    fields:
+      - fin_income.oper_cost
+      - fin_balance.fixed_assets
+
+  cicc_invt_2021:
+    category: operation
+    name_cn: 存货周转率
+    abbreviation: INVT
+    direction: 1
+    selected: false
+    formula: "inv_turn"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.inv_turn
+
+  cicc_invtd_2021:
+    category: operation
+    name_cn: 存货周转率变动
+    abbreviation: INVTD
+    direction: 1
+    selected: false
+    formula: "inv_turn(t) - inv_turn(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.inv_turn
+
+  cicc_rat_2021:
+    category: operation
+    name_cn: 应收周转率
+    abbreviation: RAT
+    direction: 1
+    selected: false
+    formula: "ar_turn"
+    note: "研报原定义为 revenue/(应收账款+应收票据)，应收票据字段不可用，以 ar_turn 近似"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.ar_turn
+
+  cicc_ratd_2021:
+    category: operation
+    name_cn: 应收周转率变动
+    abbreviation: RATD
+    direction: 1
+    selected: false
+    formula: "ar_turn(t) - ar_turn(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.ar_turn
+
+  cicc_at_2021:
+    category: operation
+    name_cn: 总资产周转率
+    abbreviation: AT
+    direction: 1
+    selected: false
+    formula: "assets_turn"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.assets_turn
+
+  # ============================================================
+  #  盈余质量 (Accrual)  —  4 个子因子 (1 selected)
+  # ============================================================
+
+  cicc_apr_2021:
+    category: accrual
+    name_cn: 应计利润占比
+    abbreviation: APR
+    direction: -1
+    selected: true
+    formula: "(operate_profit - n_cashflow_act) / operate_profit"
+    note: "应计利润 = 营业利润 - 经营性现金流净额; 值越大盈余质量越差，因子方向为负"
+    source:
+      - fin_income
+      - fin_cashflow
+    fields:
+      - fin_income.operate_profit
+      - fin_cashflow.n_cashflow_act
+
+  cicc_aprd_2021:
+    category: accrual
+    name_cn: 应计利润占比变动
+    abbreviation: APRD
+    direction: -1
+    selected: false
+    formula: "APR(t) - APR(t-1)"
+    source:
+      - fin_income
+      - fin_cashflow
+    fields:
+      - fin_income.operate_profit
+      - fin_cashflow.n_cashflow_act
+
+  cicc_csr_2021:
+    category: accrual
+    name_cn: 收现比
+    abbreviation: CSR
+    direction: 1
+    selected: false
+    formula: "salescash_to_or"
+    note: "销售商品提供劳务收到的现金 / 营业收入"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.salescash_to_or
+
+  cicc_csrd_2021:
+    category: accrual
+    name_cn: 收现比变动
+    abbreviation: CSRD
+    direction: 1
+    selected: false
+    formula: "salescash_to_or(t) - salescash_to_or(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.salescash_to_or
+
+  # ============================================================
+  #  安全性 (Safety)  —  12 个子因子 (1 selected)
+  # ============================================================
+
+  cicc_ccr_2021:
+    category: safety
+    name_cn: 现金流动负债比率
+    abbreviation: CCR
+    direction: 1
+    selected: true
+    formula: "n_cashflow_act / total_cur_liab"
+    source:
+      - fin_cashflow
+      - fin_balance
+    fields:
+      - fin_cashflow.n_cashflow_act
+      - fin_balance.total_cur_liab
+
+  cicc_ccrd_2021:
+    category: safety
+    name_cn: 现金流动负债比率变动
+    abbreviation: CCRD
+    direction: 1
+    selected: false
+    formula: "CCR(t) - CCR(t-1)"
+    source:
+      - fin_cashflow
+      - fin_balance
+    fields:
+      - fin_cashflow.n_cashflow_act
+      - fin_balance.total_cur_liab
+
+  cicc_cr_2021:
+    category: safety
+    name_cn: 现金比率
+    abbreviation: CR
+    direction: -1
+    selected: false
+    formula: "cash_ratio"
+    note: "(货币资金 + 交易性金融资产) / 流动负债; 直接使用 fin_indicator 预计算字段"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.cash_ratio
+
+  cicc_crd_2021:
+    category: safety
+    name_cn: 现金比率变动
+    abbreviation: CRD
+    direction: -1
+    selected: false
+    formula: "cash_ratio(t) - cash_ratio(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.cash_ratio
+
+  cicc_cur_2021:
+    category: safety
+    name_cn: 流动比率
+    abbreviation: CUR
+    direction: -1
+    selected: false
+    formula: "current_ratio"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.current_ratio
+
+  cicc_curd_2021:
+    category: safety
+    name_cn: 流动比率变动
+    abbreviation: CURD
+    direction: -1
+    selected: false
+    formula: "current_ratio(t) - current_ratio(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.current_ratio
+
+  cicc_dad_2021:
+    category: safety
+    name_cn: 资产负债率变动
+    abbreviation: DAD
+    direction: 1
+    selected: false
+    formula: "debt_to_assets(t) - debt_to_assets(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.debt_to_assets
+
+  cicc_debt_asset_2021:
+    category: safety
+    name_cn: 资产负债率
+    abbreviation: Debt_Asset
+    direction: 1
+    selected: false
+    formula: "debt_to_assets"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.debt_to_assets
+
+  cicc_dte_2021:
+    category: safety
+    name_cn: 产权比率
+    abbreviation: DTE
+    direction: 1
+    selected: false
+    formula: "debt_to_eqt"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.debt_to_eqt
+
+  cicc_dted_2021:
+    category: safety
+    name_cn: 产权比率变动
+    abbreviation: DTED
+    direction: 1
+    selected: false
+    formula: "debt_to_eqt(t) - debt_to_eqt(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.debt_to_eqt
+
+  cicc_qr_2021:
+    category: safety
+    name_cn: 速动比率
+    abbreviation: QR
+    direction: -1
+    selected: false
+    formula: "quick_ratio"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.quick_ratio
+
+  cicc_qrd_2021:
+    category: safety
+    name_cn: 速动比率变动
+    abbreviation: QRD
+    direction: -1
+    selected: false
+    formula: "quick_ratio(t) - quick_ratio(t-1)"
+    source:
+      - fin_indicator
+    fields:
+      - fin_indicator.quick_ratio
+
+  # ============================================================
+  #  公司治理 (Governance)  —  5 个子因子
+  # ============================================================
+
+  cicc_mc_percent_2021:
+    category: governance
+    name_cn: 流通股占比
+    abbreviation: Mc_percent
+    direction: 1
+    weight_in_governance: 1
+    selected: true
+    formula: "float_share / total_share"
+    source:
+      - daily_basic
+    fields:
+      - daily_basic.float_share
+      - daily_basic.total_share
+
+  cicc_mana_income_2021:
+    category: governance
+    name_cn: 管理层薪酬（前十）
+    abbreviation: Mana_income
+    direction: 1
+    weight_in_governance: 1
+    selected: true
+    formula: "NEEDS_DATA_DICT"
+    note: "当前数据字典中无管理层薪酬字段"
+    source: []
+    fields: []
+
+  cicc_mana_share_num_2021:
+    category: governance
+    name_cn: 管理层持股数量
+    abbreviation: Mana_share_num
+    direction: 1
+    weight_in_governance: 1
+    selected: true
+    formula: "NEEDS_DATA_DICT"
+    note: "当前数据字典中无管理层持股数量字段"
+    source: []
+    fields: []
+
+  cicc_deal_method_2021:
+    category: governance
+    name_cn: 受证监会、交易所等处罚情况
+    abbreviation: Deal_Method
+    direction: -1
+    weight_in_governance: -1
+    selected: true
+    formula: "NEEDS_DATA_DICT"
+    note: "当前数据字典中无监管处罚记录数据; 方向为负表示受罚为负面信号"
+    source: []
+    fields: []
+
+  cicc_stock_incentive_2021:
+    category: governance
+    name_cn: 是否实施股权激励
+    abbreviation: Stock_Incentive
+    direction: 1
+    weight_in_governance: 1
+    selected: true
+    formula: "NEEDS_DATA_DICT"
+    note: "当前数据字典中无股权激励实施状态数据"
+    source: []
+    fields: []
+
+  # ============================================================
+  #  指数增强模型附加因子 (CSI-300 Enhancement)
+  # ============================================================
+
+  cicc_bp_lr_2021:
+    category: index_enhancement
+    name_cn: BP估值因子
+    abbreviation: BP_LR
+    direction: 1
+    formula: "1.0 / pb"
+    source:
+      - daily_basic
+    fields:
+      - daily_basic.pb
+
+  cicc_momentum_24m_2021:
+    category: index_enhancement
+    name_cn: 24个月收益率
+    abbreviation: Momentum_24M
+    direction: 1
+    formula: "product(1 + pct_chg / 100, over trailing 24 months) - 1"
+    source:
+      - monthly_unadj
+    fields:
+      - monthly_unadj.pct_chg
+      - monthly_unadj.trade_date
+
+  cicc_va_fc_1m_2021:
+    category: index_enhancement
+    name_cn: 1个月换手率
+    abbreviation: VA_FC_1M
+    direction: -1
+    formula: "mean(turnover_rate_f, over trailing 20 trading days)"
+    source:
+      - daily_basic
+    fields:
+      - daily_basic.turnover_rate_f
+      - daily_basic.trade_date
+
+  cicc_dp_2021:
+    category: index_enhancement
+    name_cn: 股息率
+    abbreviation: DP
+    direction: 1
+    formula: "dv_ttm"
+    source:
+      - daily_basic
+    fields:
+      - daily_basic.dv_ttm
+
+  cicc_eep_2021:
+    category: index_enhancement
+    name_cn: 一致预期EP
+    abbreviation: EEP
+    direction: 1
+    formula: "NEEDS_DATA_DICT"
+    note: "需要分析师一致预期盈利数据，当前数据字典中无对应表"
+    source: []
+    fields: []
+
+  cicc_eechange_3m_2021:
+    category: index_enhancement
+    name_cn: 一致预期净利润3个月变动
+    abbreviation: EEChange_3M
+    direction: 1
+    formula: "NEEDS_DATA_DICT"
+    note: "需要分析师一致预期盈利变动数据，当前数据字典中无对应表"
+    source: []
+    fields: []
+
+# ==================== 指数增强模型配置 ====================
+index_enhancement_model:
+  cicc_csi300_enhance_2021:
+    name_cn: 基于QQC的沪深300指数增强模型
+    benchmark: "沪深300"
+    factor_weighting: "rolling_24m_IC_IR"
+    qqc_min_weight: 0.5
+    rebalance: monthly
+    fee_assumption: "单边0.3%"
+    constraints:
+      universe: "沪深300成分股"
+      industry_deviation_max: 0.05
+      size_factor_exposure_max: 0.05
+      stock_weight_deviation_max: 0.01
+    factors:
+      - cicc_bp_lr_2021
+      - cicc_momentum_24m_2021
+      - cicc_va_fc_1m_2021
+      - cicc_dp_2021
+      - cicc_eep_2021
+      - cicc_eechange_3m_2021
+      - cicc_qqc_2021
