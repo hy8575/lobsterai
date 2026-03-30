@@ -1,0 +1,706 @@
+# ============================================================
+# factor_spec.yaml
+# 来源研报: 量化多因子系列（10）：港股因子初探
+# 发行方: 中金公司 (CICC)
+# 发布日期: 2023-01-29
+# 作者: 陈宜筠, 周萧潇, 刘均伟
+# 因子总数: 70 (13大类)
+# ============================================================
+
+meta:
+  report_title: "量化多因子系列（10）：港股因子初探"
+  publisher: cicc
+  publish_date: "2023-01-29"
+  authors:
+    - 陈宜筠
+    - 周萧潇
+    - 刘均伟
+  total_factors: 70
+  database: a_share.db
+
+data:
+  align_by: ann_date
+
+combination:
+  method: equal_weight
+
+# ============================================================
+# 价量因子 (26个)
+# ============================================================
+categories:
+
+  # ----------------------------------------------------------
+  # 1. 动量与反转因子 (8个)
+  # ----------------------------------------------------------
+  - category_id: momentum_reversal
+    category_name: 动量与反转因子
+    subcategories:
+      - 月度反转因子
+      - 年度动量因子
+    factors:
+
+      - factor_id: cicc_mmt_normal_M_2023
+        factor_name: 1个月收益率
+        subcategory: 月度反转因子
+        formula: "close_t / close_{t-20} - 1"
+        source: daily_unadj
+        fields: [close]
+
+      - factor_id: cicc_mmt_normal_A_2023
+        factor_name: 1年收益率
+        subcategory: 年度动量因子
+        formula: "(close_{t-20} / close_{t-240} - 1)"
+        note: 过去12个月的收益率减去过去1个月收益率
+        source: daily_unadj
+        fields: [close]
+
+      - factor_id: cicc_mmt_avg_M_2023
+        factor_name: 相对均价的1个月收益率
+        subcategory: 月度反转因子
+        formula: "close_t / mean(close, past_20D) - 1"
+        source: daily_unadj
+        fields: [close]
+
+      - factor_id: cicc_mmt_avg_A_2023
+        factor_name: 相对均价的1年收益率
+        subcategory: 年度动量因子
+        formula: "close_{t-20} / mean(close, past_240D) - 1"
+        source: daily_unadj
+        fields: [close]
+
+      - factor_id: cicc_mmt_intraday_M_2023
+        factor_name: 1个月日内动量
+        subcategory: 月度反转因子
+        formula: "sum((close - open) / open, past_20D)"
+        source: daily_unadj
+        fields: [open, close]
+
+      - factor_id: cicc_mmt_intraday_A_2023
+        factor_name: 1年日内动量
+        subcategory: 年度动量因子
+        formula: "sum((close - open) / open, past_240D) - sum((close - open) / open, past_20D)"
+        source: daily_unadj
+        fields: [open, close]
+
+      - factor_id: cicc_mmt_overnight_M_2023
+        factor_name: 1个月隔夜动量
+        subcategory: 月度反转因子
+        formula: "sum((open_t - close_{t-1}) / close_{t-1}, past_20D)"
+        source: daily_unadj
+        fields: [open, close]
+
+      - factor_id: cicc_mmt_overnight_A_2023
+        factor_name: 1年隔夜动量
+        subcategory: 年度动量因子
+        formula: "sum((open_t - close_{t-1}) / close_{t-1}, past_240D) - sum((open_t - close_{t-1}) / close_{t-1}, past_20D)"
+        source: daily_unadj
+        fields: [open, close]
+
+  # ----------------------------------------------------------
+  # 2. 波动率因子 (7个)
+  # ----------------------------------------------------------
+  - category_id: volatility
+    category_name: 波动率因子
+    subcategories:
+      - 传统波动率因子
+      - 振幅波动率因子
+    factors:
+
+      - factor_id: cicc_vol_std_3M_2023
+        factor_name: 3个月波动率
+        subcategory: 传统波动率因子
+        formula: "std(pct_chg / 100, past_60D)"
+        source: daily_unadj
+        fields: [pct_chg]
+
+      - factor_id: cicc_vol_highlow_avg_3M_2023
+        factor_name: 3个月日内振幅
+        subcategory: 振幅波动率因子
+        formula: "mean(high / low, past_60D)"
+        source: daily_unadj
+        fields: [high, low]
+
+      - factor_id: cicc_vol_highlow_std_3M_2023
+        factor_name: 3个月日内振幅标准差
+        subcategory: 振幅波动率因子
+        formula: "std(high / low, past_60D)"
+        source: daily_unadj
+        fields: [high, low]
+
+      - factor_id: cicc_vol_upshadow_std_3M_2023
+        factor_name: 3个月上影线标准差
+        subcategory: 振幅波动率因子
+        formula: "std((high - max(open, close)) / high, past_60D)"
+        source: daily_unadj
+        fields: [open, close, high]
+
+      - factor_id: cicc_vol_downshadow_std_3M_2023
+        factor_name: 3个月下影线标准差
+        subcategory: 振幅波动率因子
+        formula: "std((min(open, close) - low) / low, past_60D)"
+        source: daily_unadj
+        fields: [open, close, low]
+
+      - factor_id: cicc_vol_w_upshadow_std_3M_2023
+        factor_name: 3个月威廉上影线标准差
+        subcategory: 振幅波动率因子
+        formula: "std((high - close) / high, past_60D)"
+        source: daily_unadj
+        fields: [close, high]
+
+      - factor_id: cicc_vol_w_downshadow_std_3M_2023
+        factor_name: 3个月威廉下影线标准差
+        subcategory: 振幅波动率因子
+        formula: "std((close - low) / low, past_60D)"
+        source: daily_unadj
+        fields: [close, low]
+
+  # ----------------------------------------------------------
+  # 3. 流动性因子 (5个)
+  # ----------------------------------------------------------
+  - category_id: liquidity
+    category_name: 流动性因子
+    subcategories:
+      - 换手率因子
+      - 收益相关流动性因子
+    factors:
+
+      - factor_id: cicc_liq_turn_avg_3M_2023
+        factor_name: 3个月换手率
+        subcategory: 换手率因子
+        formula: "mean(turnover, past_60D)"
+        source: daily_unadj
+        fields: [turnover]
+
+      - factor_id: cicc_liq_turn_std_3M_2023
+        factor_name: 3个月换手率标准差
+        subcategory: 换手率因子
+        formula: "std(turnover, past_60D)"
+        source: daily_unadj
+        fields: [turnover]
+
+      - factor_id: cicc_liq_vstd_3M_2023
+        factor_name: 3个月成交波动比
+        subcategory: 收益相关流动性因子
+        formula: "mean(amount, past_60D) / std(pct_chg / 100, past_60D)"
+        source: daily_unadj
+        fields: [amount, pct_chg]
+
+      - factor_id: cicc_liq_amihud_avg_3M_2023
+        factor_name: 3个月Amihud非流动因子
+        subcategory: 收益相关流动性因子
+        formula: "mean(abs(pct_chg / 100) / amount, past_60D)"
+        source: daily_unadj
+        fields: [pct_chg, amount]
+
+      - factor_id: cicc_liq_amihud_std_3M_2023
+        factor_name: 3个月Amihud非流动因子标准差
+        subcategory: 收益相关流动性因子
+        formula: "std(abs(pct_chg / 100) / amount, past_60D)"
+        source: daily_unadj
+        fields: [pct_chg, amount]
+
+  # ----------------------------------------------------------
+  # 4. 价量相关性因子 (6个)
+  # ----------------------------------------------------------
+  - category_id: price_volume_corr
+    category_name: 价量相关性因子
+    subcategories:
+      - 价格相关性因子
+      - 收益相关性因子
+    factors:
+
+      - factor_id: cicc_corr_price_turn_1M_2023
+        factor_name: 换手率与价格相关性因子（量价同步）
+        subcategory: 价格相关性因子
+        formula: "corr(turnover_t, close_t, past_20D)"
+        source: daily_unadj
+        fields: [turnover, close]
+
+      - factor_id: cicc_corr_price_turn_post_1M_2023
+        factor_name: 换手率与价格相关性因子（量领先一期）
+        subcategory: 价格相关性因子
+        formula: "corr(turnover_t, close_{t+1}, past_20D)"
+        source: daily_unadj
+        fields: [turnover, close]
+
+      - factor_id: cicc_corr_price_turn_prior_1M_2023
+        factor_name: 换手率与价格相关性因子（价领先一期）
+        subcategory: 价格相关性因子
+        formula: "corr(turnover_t, close_{t-1}, past_20D)"
+        source: daily_unadj
+        fields: [turnover, close]
+
+      - factor_id: cicc_corr_ret_turnd_1M_2023
+        factor_name: 换手率变动与收益率相关性因子（量价同步）
+        subcategory: 收益相关性因子
+        formula: "corr(turnover_t - turnover_{t-1}, pct_chg_t, past_20D)"
+        source: daily_unadj
+        fields: [turnover, pct_chg]
+
+      - factor_id: cicc_corr_ret_turnd_post_1M_2023
+        factor_name: 换手率变动与收益率相关性因子（量领先一期）
+        subcategory: 收益相关性因子
+        formula: "corr(turnover_t - turnover_{t-1}, pct_chg_{t+1}, past_20D)"
+        source: daily_unadj
+        fields: [turnover, pct_chg]
+
+      - factor_id: cicc_corr_ret_turnd_prior_1M_2023
+        factor_name: 换手率变动与收益率相关性因子（价领先一期）
+        subcategory: 收益相关性因子
+        formula: "corr(turnover_t - turnover_{t-1}, pct_chg_{t-1}, past_20D)"
+        source: daily_unadj
+        fields: [turnover, pct_chg]
+
+  # ============================================================
+  # 基本面因子 (44个)
+  # ============================================================
+
+  # ----------------------------------------------------------
+  # 5. 盈利能力因子 (6个)
+  # ----------------------------------------------------------
+  - category_id: profitability
+    category_name: 盈利能力因子
+    subcategories:
+      - 盈利比率因子
+      - 盈利比变动因子
+    factors:
+
+      - factor_id: cicc_CFOA_TTM_2023
+        factor_name: 全部资产现金回收率TTM
+        subcategory: 盈利比率因子
+        formula: "TTM(n_cashflow_act) / total_assets"
+        source:
+          - fin_cashflow
+          - fin_balance
+        fields: [n_cashflow_act, total_assets]
+
+      - factor_id: cicc_CFOAD_2023
+        factor_name: 全部资产现金回收率变动
+        subcategory: 盈利比变动因子
+        formula: "CFOA_TTM_current - CFOA_TTM_previous"
+        note: "当期CFOA_TTM减去上一报告期CFOA_TTM"
+        source:
+          - fin_cashflow
+          - fin_balance
+        fields: [n_cashflow_act, total_assets]
+
+      - factor_id: cicc_ROA_TTM_2023
+        factor_name: 资产回报率TTM
+        subcategory: 盈利比率因子
+        formula: "TTM(n_income_attr_p) / total_assets"
+        source:
+          - fin_income
+          - fin_balance
+        fields: [n_income_attr_p, total_assets]
+
+      - factor_id: cicc_ROAD_2023
+        factor_name: 资产回报率变动
+        subcategory: 盈利比变动因子
+        formula: "ROA_TTM_current - ROA_TTM_previous"
+        note: "当期ROA_TTM减去上一报告期ROA_TTM"
+        source:
+          - fin_income
+          - fin_balance
+        fields: [n_income_attr_p, total_assets]
+
+      - factor_id: cicc_ROE_TTM_2023
+        factor_name: 净资产收益率TTM
+        subcategory: 盈利比率因子
+        formula: "TTM(n_income_attr_p) / total_hldr_eqy_exc_min_int"
+        source:
+          - fin_income
+          - fin_balance
+        fields: [n_income_attr_p, total_hldr_eqy_exc_min_int]
+
+      - factor_id: cicc_ROED_2023
+        factor_name: 净资产收益率变动
+        subcategory: 盈利比变动因子
+        formula: "ROE_TTM_current - ROE_TTM_previous"
+        note: "当期ROE_TTM减去上一报告期ROE_TTM"
+        source:
+          - fin_income
+          - fin_balance
+        fields: [n_income_attr_p, total_hldr_eqy_exc_min_int]
+
+  # ----------------------------------------------------------
+  # 6. 估值因子 (5个)
+  # ----------------------------------------------------------
+  - category_id: valuation
+    category_name: 估值因子
+    factors:
+
+      - factor_id: cicc_BP_LR_2023
+        factor_name: 市净率倒数
+        formula: "total_hldr_eqy_exc_min_int / (total_mv * 10000)"
+        note: "total_mv单位为万元，财务数据单位为元，需统一"
+        source:
+          - fin_balance
+          - daily_basic
+        fields: [total_hldr_eqy_exc_min_int, total_mv]
+
+      - factor_id: cicc_EP_TTM_2023
+        factor_name: 市盈率倒数
+        formula: "TTM(n_income_attr_p) / (total_mv * 10000)"
+        source:
+          - fin_income
+          - daily_basic
+        fields: [n_income_attr_p, total_mv]
+
+      - factor_id: cicc_NCFP_TTM_2023
+        factor_name: 净现金流TTM比总市值
+        formula: "TTM(n_cashflow_act + n_cashflow_inv_act + n_cash_flows_fnc_act) / (total_mv * 10000)"
+        source:
+          - fin_cashflow
+          - daily_basic
+        fields: [n_cashflow_act, n_cashflow_inv_act, n_cash_flows_fnc_act, total_mv]
+
+      - factor_id: cicc_OCFP_TTM_2023
+        factor_name: 经营性现金流TTM比总市值
+        formula: "TTM(n_cashflow_act) / (total_mv * 10000)"
+        source:
+          - fin_cashflow
+          - daily_basic
+        fields: [n_cashflow_act, total_mv]
+
+      - factor_id: cicc_SP_TTM_2023
+        factor_name: 市销率倒数
+        formula: "TTM(revenue) / (total_mv * 10000)"
+        source:
+          - fin_income
+          - daily_basic
+        fields: [revenue, total_mv]
+
+  # ----------------------------------------------------------
+  # 7. 成长能力因子 (6个)
+  # ----------------------------------------------------------
+  - category_id: growth
+    category_name: 成长能力因子
+    subcategories:
+      - EPS增速因子
+      - 利润增速因子
+    factors:
+
+      - factor_id: cicc_DEPS_YOY_2023
+        factor_name: 稀释EPS增速（同比）
+        subcategory: EPS增速因子
+        formula: "(diluted_eps - diluted_eps_last_year) / abs(diluted_eps_last_year)"
+        note: "去年同期对应end_date同季度上年值"
+        source: fin_income
+        fields: [diluted_eps]
+
+      - factor_id: cicc_EPS_YOY_2023
+        factor_name: EPS增速（同比）
+        subcategory: EPS增速因子
+        formula: "(basic_eps - basic_eps_last_year) / abs(basic_eps_last_year)"
+        source: fin_income
+        fields: [basic_eps]
+
+      - factor_id: cicc_NPD_YOY_2023
+        factor_name: 净利润TTM增速（同比）
+        subcategory: 利润增速因子
+        formula: "(TTM(n_income_attr_p) - TTM_last_year(n_income_attr_p)) / abs(TTM_last_year(n_income_attr_p))"
+        source: fin_income
+        fields: [n_income_attr_p]
+
+      - factor_id: cicc_OPD_YOY_2023
+        factor_name: 营业利润TTM增速（同比）
+        subcategory: 利润增速因子
+        formula: "(TTM(operate_profit) - TTM_last_year(operate_profit)) / abs(TTM_last_year(operate_profit))"
+        source: fin_income
+        fields: [operate_profit]
+
+      - factor_id: cicc_NPD_2023
+        factor_name: 净利润TTM增速
+        subcategory: 利润增速因子
+        formula: "(TTM_current(n_income_attr_p) - TTM_previous(n_income_attr_p)) / abs(TTM_previous(n_income_attr_p))"
+        note: "环比增速：当期TTM与上一报告期TTM之差比"
+        source: fin_income
+        fields: [n_income_attr_p]
+
+      - factor_id: cicc_OPD_2023
+        factor_name: 营业利润TTM增速
+        subcategory: 利润增速因子
+        formula: "(TTM_current(operate_profit) - TTM_previous(operate_profit)) / abs(TTM_previous(operate_profit))"
+        note: "环比增速：当期TTM与上一报告期TTM之差比"
+        source: fin_income
+        fields: [operate_profit]
+
+  # ----------------------------------------------------------
+  # 8. 营运效率因子 (4个)
+  # ----------------------------------------------------------
+  - category_id: operating_efficiency
+    category_name: 营运效率因子
+    subcategories:
+      - 利润率因子
+      - 利润率变动因子
+    factors:
+
+      - factor_id: cicc_NPM_TTM_2023
+        factor_name: 净利率TTM
+        subcategory: 利润率因子
+        formula: "TTM(n_income_attr_p) / TTM(revenue)"
+        source: fin_income
+        fields: [n_income_attr_p, revenue]
+
+      - factor_id: cicc_NPMD_2023
+        factor_name: 净利率变动
+        subcategory: 利润率变动因子
+        formula: "NPM_TTM_current - NPM_TTM_previous"
+        note: "当期净利率TTM减去上一报告期净利率TTM"
+        source: fin_income
+        fields: [n_income_attr_p, revenue]
+
+      - factor_id: cicc_OPM_TTM_2023
+        factor_name: 营业利润率TTM
+        subcategory: 利润率因子
+        formula: "TTM(operate_profit) / TTM(revenue)"
+        source: fin_income
+        fields: [operate_profit, revenue]
+
+      - factor_id: cicc_OPMD_2023
+        factor_name: 营业利润率变动
+        subcategory: 利润率变动因子
+        formula: "OPM_TTM_current - OPM_TTM_previous"
+        note: "当期营业利润率TTM减去上一报告期营业利润率TTM"
+        source: fin_income
+        fields: [operate_profit, revenue]
+
+  # ----------------------------------------------------------
+  # 9. 盈余质量因子 (4个)
+  # ----------------------------------------------------------
+  - category_id: earnings_quality
+    category_name: 盈余质量因子
+    factors:
+
+      - factor_id: cicc_APR_TTM_2023
+        factor_name: 应计利润占比
+        formula: "(TTM(n_income_attr_p) - TTM(n_cashflow_act)) / TTM(operate_profit)"
+        note: "应计利润 = 净利润TTM - 经营现金流净额TTM"
+        source:
+          - fin_income
+          - fin_cashflow
+        fields: [n_income_attr_p, operate_profit, n_cashflow_act]
+
+      - factor_id: cicc_APRD_2023
+        factor_name: 应计利润占比变动
+        formula: "APR_TTM_current - APR_TTM_previous"
+        note: "当期APR_TTM减去上一报告期APR_TTM"
+        source:
+          - fin_income
+          - fin_cashflow
+        fields: [n_income_attr_p, operate_profit, n_cashflow_act]
+
+      - factor_id: cicc_CSR_2023
+        factor_name: 现金比率
+        formula: "money_cap / total_cur_liab"
+        source: fin_balance
+        fields: [money_cap, total_cur_liab]
+
+      - factor_id: cicc_CSRD_2023
+        factor_name: 现金比率变动
+        formula: "CSR_current - CSR_previous"
+        note: "当期现金比率减去上一报告期现金比率"
+        source: fin_balance
+        fields: [money_cap, total_cur_liab]
+
+  # ----------------------------------------------------------
+  # 10. 规模因子 (5个)
+  # ----------------------------------------------------------
+  - category_id: size
+    category_name: 规模因子
+    subcategories:
+      - 普通规模因子
+      - 对数规模因子
+    factors:
+
+      - factor_id: cicc_FC_2023
+        factor_name: 流通市值
+        subcategory: 普通规模因子
+        formula: "circ_mv"
+        source: daily_basic
+        fields: [circ_mv]
+
+      - factor_id: cicc_FC_MC_2023
+        factor_name: 流通市值比总市值
+        subcategory: 普通规模因子
+        formula: "circ_mv / total_mv"
+        source: daily_basic
+        fields: [circ_mv, total_mv]
+
+      - factor_id: cicc_Ln_FC_2023
+        factor_name: 流通市值对数
+        subcategory: 对数规模因子
+        formula: "ln(circ_mv)"
+        source: daily_basic
+        fields: [circ_mv]
+
+      - factor_id: cicc_Ln_MC_2023
+        factor_name: 总市值对数
+        subcategory: 对数规模因子
+        formula: "ln(total_mv)"
+        source: daily_basic
+        fields: [total_mv]
+
+      - factor_id: cicc_MC_2023
+        factor_name: 总市值
+        subcategory: 普通规模因子
+        formula: "total_mv"
+        source: daily_basic
+        fields: [total_mv]
+
+  # ----------------------------------------------------------
+  # 11. 安全性因子 (6个)
+  # ----------------------------------------------------------
+  - category_id: safety
+    category_name: 安全性因子
+    subcategories:
+      - 偿债能力因子
+      - 负债程度因子
+    factors:
+
+      - factor_id: cicc_CCR_2023
+        factor_name: 现金流动负债比率
+        subcategory: 偿债能力因子
+        formula: "n_cashflow_act / total_cur_liab"
+        source:
+          - fin_cashflow
+          - fin_balance
+        fields: [n_cashflow_act, total_cur_liab]
+
+      - factor_id: cicc_CCRD_2023
+        factor_name: 现金流动负债比率变动
+        subcategory: 偿债能力因子
+        formula: "CCR_current - CCR_previous"
+        note: "当期CCR减去上一报告期CCR"
+        source:
+          - fin_cashflow
+          - fin_balance
+        fields: [n_cashflow_act, total_cur_liab]
+
+      - factor_id: cicc_CUR_2023
+        factor_name: 流动比率
+        subcategory: 偿债能力因子
+        formula: "total_cur_assets / total_cur_liab"
+        source: fin_balance
+        fields: [total_cur_assets, total_cur_liab]
+
+      - factor_id: cicc_CURD_2023
+        factor_name: 流动比率变动
+        subcategory: 偿债能力因子
+        formula: "CUR_current - CUR_previous"
+        note: "当期CUR减去上一报告期CUR"
+        source: fin_balance
+        fields: [total_cur_assets, total_cur_liab]
+
+      - factor_id: cicc_DA_2023
+        factor_name: 资产负债比
+        subcategory: 负债程度因子
+        formula: "total_liab / total_assets"
+        source: fin_balance
+        fields: [total_liab, total_assets]
+
+      - factor_id: cicc_DAD_2023
+        factor_name: 资产负债率变动
+        subcategory: 负债程度因子
+        formula: "DA_current - DA_previous"
+        note: "当期DA减去上一报告期DA"
+        source: fin_balance
+        fields: [total_liab, total_assets]
+
+  # ----------------------------------------------------------
+  # 12. 分析师因子 (6个)
+  # ----------------------------------------------------------
+  - category_id: analyst
+    category_name: 分析师因子
+    subcategories:
+      - 预期因子
+      - 预期变化率因子
+    factors:
+
+      - factor_id: cicc_FORE_Earning_2023
+        factor_name: 一致预期净利润
+        subcategory: 预期因子
+        formula: "NEEDS_DATA_DICT — 需要一致预期净利润数据(Wind consensus forecast)"
+        source: NEEDS_DATA_DICT
+        fields: []
+
+      - factor_id: cicc_EEChange_3M_2023
+        factor_name: 一致预期净利润三个月变化率
+        subcategory: 预期变化率因子
+        formula: "NEEDS_DATA_DICT — (当期一致预期净利润 - 前三个月一致预期净利润) / abs(前三个月一致预期净利润)"
+        source: NEEDS_DATA_DICT
+        fields: []
+
+      - factor_id: cicc_FORE_EPS_2023
+        factor_name: 一致预期EPS
+        subcategory: 预期因子
+        formula: "NEEDS_DATA_DICT — 需要一致预期EPS数据(Wind consensus forecast)"
+        source: NEEDS_DATA_DICT
+        fields: []
+
+      - factor_id: cicc_EEPSChange_3M_2023
+        factor_name: 一致预期EPS三个月变化率
+        subcategory: 预期变化率因子
+        formula: "NEEDS_DATA_DICT — (当期一致预期EPS - 前三个月一致预期EPS) / abs(前三个月一致预期EPS)"
+        source: NEEDS_DATA_DICT
+        fields: []
+
+      - factor_id: cicc_FORE_OP_2023
+        factor_name: 一致预期营业收入
+        subcategory: 预期因子
+        formula: "NEEDS_DATA_DICT — 需要一致预期营业收入数据(Wind consensus forecast)"
+        source: NEEDS_DATA_DICT
+        fields: []
+
+      - factor_id: cicc_EOPChange_3M_2023
+        factor_name: 一致预期营业收入三个月变化率
+        subcategory: 预期变化率因子
+        formula: "NEEDS_DATA_DICT — (当期一致预期营业收入 - 前三个月一致预期营业收入) / abs(前三个月一致预期营业收入)"
+        source: NEEDS_DATA_DICT
+        fields: []
+
+  # ----------------------------------------------------------
+  # 13. 公司治理因子 (2个)
+  # ----------------------------------------------------------
+  - category_id: corporate_governance
+    category_name: 公司治理因子
+    factors:
+
+      - factor_id: cicc_DPR_TTM_2023
+        factor_name: 股利支付率
+        formula: "(dv_ttm / 100) * (total_mv * 10000) / TTM(n_income_attr_p)"
+        note: "dv_ttm为股息率TTM(%)，total_mv为总市值(万元)，n_income_attr_p为归母净利润(元)；通过股息率反推总股利再除以净利润"
+        source:
+          - daily_basic
+          - fin_income
+        fields: [dv_ttm, total_mv, n_income_attr_p]
+
+      - factor_id: cicc_DPRD_2023
+        factor_name: 股利支付率变动
+        formula: "DPR_TTM_current - DPR_TTM_previous"
+        note: "当期股利支付率减去上一报告期股利支付率"
+        source:
+          - daily_basic
+          - fin_income
+        fields: [dv_ttm, total_mv, n_income_attr_p]
+
+# ============================================================
+# TTM 计算说明:
+#   TTM(X) = X_当季累计 + X_上年年报 - X_上年同季累计
+#   例: TTM(Q3_2022) = Q3_2022 + FY_2021 - Q3_2021
+#   年报直接使用披露值，无需TTM处理
+#
+# 变动因子 (_D 后缀) 说明:
+#   "上期" 指上一个财务报告期
+#   "去年同期" 指去年同一季度的报告期
+#
+# 日频滚动窗口说明:
+#   past_20D  ≈ 1个月 (20个交易日)
+#   past_60D  ≈ 3个月 (60个交易日)
+#   past_240D ≈ 1年  (240个交易日)
+#
+# 对齐方式:
+#   基本面因子使用 ann_date 对齐，避免未来信息泄露
+#   价量因子使用 trade_date 对齐
+# ============================================================
